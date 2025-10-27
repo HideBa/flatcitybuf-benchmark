@@ -1,0 +1,12 @@
+FROM node:18-alpine
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install --production
+
+COPY servers/server1.js ./servers/
+
+EXPOSE 3001
+
+CMD ["node", "servers/server1.js"]

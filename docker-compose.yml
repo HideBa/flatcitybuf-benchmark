@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  server1:
+    build:
+      context: .
+      dockerfile: Dockerfile.server1
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+    networks:
+      - benchmark-network
+
+  server2:
+    build:
+      context: .
+      dockerfile: Dockerfile.server2
+    ports:
+      - "3002:3002"
+    environment:
+      - PORT=3002
+    networks:
+      - benchmark-network
+
+  k6:
+    image: grafana/k6:latest
+    volumes:
+      - ./k6-tests:/scripts
+    environment:
+      - SERVER1_URL=http://server1:3001
+      - SERVER2_URL=http://server2:3002
+    networks:
+      - benchmark-network
+    depends_on:
+      - server1
+      - server2
+    command: run /scripts/compare-servers.js
+
+networks:
+  benchmark-network:
+    driver: bridge

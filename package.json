@@ -1,0 +1,27 @@
+{
+  "name": "flatcitybuf-benchmark",
+  "version": "1.0.0",
+  "description": "Benchmark tests for API servers using k6",
+  "main": "index.js",
+  "scripts": {
+    "server1": "node servers/server1.js",
+    "server2": "node servers/server2.js",
+    "test": "k6 run k6-tests/benchmark.js",
+    "test:server1": "k6 run k6-tests/server1-test.js",
+    "test:server2": "k6 run k6-tests/server2-test.js",
+    "test:compare": "k6 run k6-tests/compare-servers.js",
+    "benchmark": "bash run-benchmark.sh"
+  },
+  "keywords": [
+    "benchmark",
+    "k6",
+    "performance",
+    "api"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2"
+  },
+  "devDependencies": {}
+}
