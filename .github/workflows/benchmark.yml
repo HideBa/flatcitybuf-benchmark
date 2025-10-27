@@ -1,0 +1,57 @@
+name: k6 Benchmark Tests
+
+on:
+  push:
+    branches: [ main, copilot/benchmark-api-servers-with-k6 ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+    
+    - name: Install dependencies
+      run: npm install
+    
+    - name: Install k6
+      run: |
+        curl -L https://github.com/grafana/k6/releases/download/v0.48.0/k6-v0.48.0-linux-amd64.tar.gz -o k6.tar.gz
+        tar -xzf k6.tar.gz
+        sudo cp k6-v0.48.0-linux-amd64/k6 /usr/local/bin/
+        k6 version
+    
+    - name: Start Server 1
+      run: npm run server1 &
+    
+    - name: Start Server 2
+      run: npm run server2 &
+    
+    - name: Wait for servers to be ready
+      run: |
+        sleep 5
+        curl http://localhost:3001/health
+        curl http://localhost:3002/health
+    
+    - name: Run k6 benchmarks
+      run: |
+        echo "Running simple benchmark..."
+        k6 run --duration 30s k6-tests/benchmark.js
+        
+        echo "Running Server 1 test..."
+        k6 run --duration 30s k6-tests/server1-test.js
+        
+        echo "Running Server 2 test..."
+        k6 run --duration 30s k6-tests/server2-test.js
+        
+        echo "Running comparison test..."
+        k6 run --duration 60s k6-tests/compare-servers.js
