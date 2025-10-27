@@ -1,0 +1,25 @@
+{
+  "name": "flatcitybuf-benchmark",
+  "version": "1.0.0",
+  "description": "Benchmark suite for flatcitybuf API performance testing",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "benchmark": "./run-benchmark.sh",
+    "benchmark:quick": "k6 run --duration 30s --vus 10 benchmark.js",
+    "server": "node server.js"
+  },
+  "keywords": [
+    "benchmark",
+    "performance",
+    "k6",
+    "load-testing",
+    "api-testing"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^5.1.0",
+    "k6": "^0.0.0"
+  }
+}
