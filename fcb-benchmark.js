@@ -1,6 +1,8 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { Rate, Trend } from 'k6/metrics';
+import { htmlReport } from 'https://raw.githubusercontent.com/benc-uk/k6-reporter/main/dist/bundle.js';
+import { textSummary } from 'https://jslib.k6.io/k6-summary/0.1.0/index.js';
 
 // Custom metrics
 const errorRate = new Rate('errors');
@@ -242,28 +244,112 @@ export const options = {
       tags: { scenario: 'ramping_10_50_70_90vus_format_comparison_30s', query_type: 'format' },
       startTime: '505s', // Start after ramping_combined_query (475s + 30s + 5s)
     },
+  },
 
-    thresholds: {
-      // Global thresholds
-      http_req_duration: ['p(95)<5000', 'p(99)<10000'],
-      http_req_failed: ['rate<0.05'], // Allow 5% error rate for stress testing
-      errors: ['rate<0.1'],
+  thresholds: {
+    // Test Group 1: Constant BBox Queries - Strict thresholds for throughput testing
+    'http_req_duration{scenario:constant_10vus_bbox_10features_30s}': [
+      'p(95)<500',
+      'p(99)<1000',
+    ],
+    'http_req_failed{scenario:constant_10vus_bbox_10features_30s}': ['rate<0.01'],
 
-      // Per-scenario thresholds
-      // TODO: Add thresholds for each scenario later
-      // 'http_req_duration{scenario:bbox_10}': ['p(95)<500'],
-      // 'http_req_duration{scenario:bbox_100}': ['p(95)<1000'],
-      // 'http_req_duration{scenario:bbox_1000}': ['p(95)<3000'],
-      // 'http_req_duration{scenario:bbox_10000}': ['p(95)<10000'],
-      // 'http_req_duration{scenario:id_lookup}': ['p(95)<300'],
-      // 'http_req_duration{scenario:attr_filter_small}': ['p(95)<1000'],
-      // 'http_req_duration{scenario:attr_filter_medium}': ['p(95)<2000'],
-      // 'http_req_duration{scenario:combined}': ['p(95)<2000'],
-      // 'http_req_duration{scenario:format_comparison}': ['p(95)<3000'],
-      // 'http_req_duration{scenario:pagination}': ['p(95)<2000'],
-    },
-  }
-}
+    'http_req_duration{scenario:constant_10vus_bbox_100features_30s}': [
+      'p(95)<1000',
+      'p(99)<2000',
+    ],
+    'http_req_failed{scenario:constant_10vus_bbox_100features_30s}': ['rate<0.01'],
+
+    'http_req_duration{scenario:constant_10vus_bbox_1000features_30s}': [
+      'p(95)<3000',
+      'p(99)<5000',
+    ],
+    'http_req_failed{scenario:constant_10vus_bbox_1000features_30s}': ['rate<0.01'],
+
+    'http_req_duration{scenario:constant_10vus_bbox_10000features_30s}': [
+      'p(95)<10000',
+      'p(99)<15000',
+    ],
+    'http_req_failed{scenario:constant_10vus_bbox_10000features_30s}': ['rate<0.02'],
+
+    // Test Group 2: Ramping BBox Queries - More relaxed thresholds for scalability testing
+    'http_req_duration{scenario:ramping_10_50_70_90vus_bbox_10features_30s}': [
+      'p(95)<1500',  // 3x slower than constant due to high load
+      'p(99)<3000',
+    ],
+    'http_req_failed{scenario:ramping_10_50_70_90vus_bbox_10features_30s}': ['rate<0.05'],
+
+    'http_req_duration{scenario:ramping_10_50_70_90vus_bbox_100features_30s}': [
+      'p(95)<3000',  // 3x slower than constant
+      'p(99)<6000',
+    ],
+    'http_req_failed{scenario:ramping_10_50_70_90vus_bbox_100features_30s}': ['rate<0.05'],
+
+    'http_req_duration{scenario:ramping_10_30_50_70_90vus_bbox_1000features_30s}': [
+      'p(95)<9000',  // 3x slower than constant
+      'p(99)<15000',
+    ],
+    'http_req_failed{scenario:ramping_10_30_50_70_90vus_bbox_1000features_30s}': ['rate<0.05'],
+
+    'http_req_duration{scenario:ramping_10_50_70_90vus_bbox_10000features_30s}': [
+      'p(95)<30000',  // 3x slower than constant
+      'p(99)<45000',
+    ],
+    'http_req_failed{scenario:ramping_10_50_70_90vus_bbox_10000features_30s}': ['rate<0.10'],
+
+    // Test Group 3: Constant ID Lookup - Should be very fast with attribute index
+    'http_req_duration{scenario:constant_10vus_id_lookup_30s}': [
+      'p(95)<300',
+      'p(99)<500',
+    ],
+    'http_req_failed{scenario:constant_10vus_id_lookup_30s}': ['rate<0.01'],
+
+    // Test Group 4: Ramping ID Lookup
+    'http_req_duration{scenario:ramping_10_20_30_40_50_60vus_id_lookup_30s}': [
+      'p(95)<900',  // 3x slower than constant
+      'p(99)<1500',
+    ],
+    'http_req_failed{scenario:ramping_10_20_30_40_50_60vus_id_lookup_30s}': ['rate<0.05'],
+
+    // Test Group 5: Constant Attribute Filter & Combined Queries
+    'http_req_duration{scenario:constant_10vus_attribute_filter_small_30s}': [
+      'p(95)<1000',
+      'p(99)<2000',
+    ],
+    'http_req_failed{scenario:constant_10vus_attribute_filter_small_30s}': ['rate<0.02'], // Some filters may not be indexed
+
+    'http_req_duration{scenario:constant_10vus_combined_query_30s}': [
+      'p(95)<2000',
+      'p(99)<3000',
+    ],
+    'http_req_failed{scenario:constant_10vus_combined_query_30s}': ['rate<0.02'],
+
+    'http_req_duration{scenario:constant_10vus_format_comparison_30s}': [
+      'p(95)<3000',  // Format conversion can be slower (especially OBJ)
+      'p(99)<5000',
+    ],
+    'http_req_failed{scenario:constant_10vus_format_comparison_30s}': ['rate<0.01'],
+
+    // Test Group 6: Ramping Attribute Filter & Combined Queries
+    'http_req_duration{scenario:ramping_10_20_30_40_50_60vus_attribute_filter_small_30s}': [
+      'p(95)<3000',  // 3x slower than constant
+      'p(99)<6000',
+    ],
+    'http_req_failed{scenario:ramping_10_20_30_40_50_60vus_attribute_filter_small_30s}': ['rate<0.05'],
+
+    'http_req_duration{scenario:ramping_10_20_30_40_50_60vus_combined_query_30s}': [
+      'p(95)<6000',  // 3x slower than constant
+      'p(99)<9000',
+    ],
+    'http_req_failed{scenario:ramping_10_20_30_40_50_60vus_combined_query_30s}': ['rate<0.05'],
+
+    'http_req_duration{scenario:ramping_10_50_70_90vus_format_comparison_30s}': [
+      'p(95)<9000',  // 3x slower than constant
+      'p(99)<15000',
+    ],
+    'http_req_failed{scenario:ramping_10_50_70_90vus_format_comparison_30s}': ['rate<0.05'],
+  },
+};
 
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
 const COLLECTION_ID = 'pand';
@@ -620,4 +706,17 @@ export function teardown(data) {
     `FlatCityBuf API benchmark tests completed. Started at: ${data.startTime}`
   );
   console.log('Check the results for performance metrics per scenario.');
+}
+
+// HTML Summary Handler using k6-reporter
+// See: https://github.com/benc-uk/k6-reporter
+export function handleSummary(data) {
+  return {
+    'results/summary.html': htmlReport(data, {
+      title: 'FlatCityBuf API Benchmark Results',
+      theme: 'default'
+    }),
+    'results/summary.json': JSON.stringify(data),
+    stdout: textSummary(data, { indent: ' ', enableColors: true }),
+  };
 }

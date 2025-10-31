@@ -1,276 +1,745 @@
-# flatcitybuf-benchmark
+# FlatCityBuf API Benchmark Suite
 
-A comprehensive benchmark suite for testing API performance, measuring CPU usage, memory consumption, and response times.
+Comprehensive performance benchmarking for FlatCityBuf API using k6 load testing framework.
 
-## Features
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![k6](https://img.shields.io/badge/k6-latest-7d64ff.svg)](https://k6.io)
 
-- **Multiple Test Scenarios**: 5 different benchmark scenarios covering various load patterns
-- **Resource Monitoring**: Real-time CPU and memory usage tracking
-- **Performance Metrics**: Response times, throughput, error rates
-- **Multiple Endpoints**: Test various API endpoints with different payload sizes
-- **Automated Testing**: Single command to run complete benchmark suite
-- **Resource Reservation**: Documentation for fair performance testing on Linux
+## 🚀 Quick Start
 
-## Prerequisites
-
-- Node.js (v14 or higher)
-- npm
-- k6 (load testing tool)
-
-## Installation
-
-1. Clone the repository:
 ```bash
-git clone https://github.com/HideBa/flatcitybuf-benchmark.git
-cd flatcitybuf-benchmark
+# Install k6
+brew install k6  # macOS
+
+# Run benchmark
+./run-fcb-benchmark.sh
 ```
 
-2. Install dependencies:
-```bash
-npm install
-```
+**That's it!** Results will be saved to `results/` directory.
 
-3. Install k6:
+## 📋 What This Tests
+
+This benchmark suite specifically tests **feature-fetching operations** in the FlatCityBuf API:
+
+- ✅ **Spatial queries** (bounding box) with 10, 100, 1000, and 10000 features
+- ✅ **Feature ID lookups** using attribute index
+- ✅ **Attribute filtering** with various conditions
+- ✅ **Combined queries** (spatial + attribute)
+- ✅ **Multiple output formats** (JSON, CityJSON, CityJSONSeq, OBJ)
+- ✅ **Pagination** with different offsets
+- ✅ **OGC API compliance** (links, metadata, pagination)
+
+**Note:** This benchmark focuses on **read operations** that fetch features. Endpoints returning constant values (landing page, conformance, collections metadata) are not included.
+
+## 📊 Test Scenarios Overview
+
+The benchmark suite includes **16 scenarios** organized into **6 test groups**, running sequentially with 5-second buffers to prevent interference.
+
+**Total test duration:** ~540 seconds (~9 minutes)
+
+### Quick Summary
+
+| Scenario | Duration | VUs | Features | p(95) Threshold |
+|----------|----------|-----|----------|-----------------|
+| BBox Query (10) | 30s | 10 | 10 | < 500ms |
+| BBox Query (100) | 30s | 10 | 100 | < 1000ms |
+| BBox Query (1000) | 30s | 10 | 1000 | < 3000ms |
+| BBox Query (10000) | 30s | 10 | 10000 | < 10000ms |
+| ID Lookup | 30s | 10 | 1 | < 300ms |
+| Attr Filter (Small) | 30s | 10 | 10 | < 1000ms |
+| Combined Query | 30s | 10 | 50 | < 2000ms |
+| Format Comparison | 30s | 10 | 10 | < 3000ms |
+
+*Note: Ramping tests scale from 0→15→30→50→70→90 VUs over 30 seconds*
+
+### Detailed Scenario Breakdown
+
+<details>
+<summary><strong>Test Group 1: Constant BBox Queries (Throughput Testing)</strong></summary>
+
+#### Scenario 1: Small BBox Query (100m × 100m)
+
+- **Start Time:** 0s
+- **VUs:** 10 constant
+- **Duration:** 30s
+- **Query:** `bbox=91350,437950,91450,438050&limit=10`
+- **Purpose:** Baseline performance for minimal spatial queries
+
+#### Scenario 2: Medium BBox Query (1km × 1km)
+
+- **Start Time:** 35s
+- **VUs:** 10 constant
+- **Duration:** 30s
+- **Query:** `bbox=90900,437500,91900,438500&limit=100`
+- **Purpose:** Typical urban area query performance
+
+#### Scenario 3: Large BBox Query (5km × 5km)
+
+- **Start Time:** 70s
+- **VUs:** 10 constant
+- **Duration:** 30s
+- **Query:** `bbox=88900,435500,93900,440500&limit=1000`
+- **Purpose:** Large area query with substantial data volume
+
+#### Scenario 4: Very Large BBox Query (10km × 10km)
+
+- **Start Time:** 105s
+- **VUs:** 10 constant
+- **Duration:** 30s
+- **Query:** `bbox=86400,433000,96400,443000&limit=10000`
+- **Purpose:** Stress test with maximum result sets
+
+</details>
+
+<details>
+<summary><strong>Test Group 2: Ramping BBox Queries (Scalability Testing)</strong></summary>
+
+#### Scenario 5-8: Ramping BBox Queries
+
+- **Start Times:** 140s, 175s, 210s, 245s
+- **VUs:** Ramping 0→15→30→50→70→90→0 (5s each stage)
+- **Duration:** 30s each
+- **Sizes:** Small (100m²), Medium (1km²), Large (5km²), Very Large (10km²)
+- **Purpose:** Test system scalability under increasing load for each bbox size
+
+</details>
+
+<details>
+<summary><strong>Test Group 3-4: Feature ID Lookup</strong></summary>
+
+#### Scenario 9: Constant ID Lookup
+
+- **Start Time:** 280s
+- **VUs:** 10 constant
+- **Duration:** 30s
+- **Purpose:** Test attribute index performance for direct feature access
+- **Sample IDs:** TU Delft BK, Amsterdam Central Station, etc.
+
+#### Scenario 10: Ramping ID Lookup
+
+- **Start Time:** 315s
+- **VUs:** Ramping 0→15→30→50→70→90→0
+- **Duration:** 30s
+- **Purpose:** Test ID lookup scalability under increasing concurrent requests
+
+</details>
+
+<details>
+<summary><strong>Test Group 5-6: Attribute Filters & Combined Queries</strong></summary>
+
+#### Scenario 11: Constant Attribute Filter
+
+- **Start Time:** 350s
+- **VUs:** 10 constant
+- **Duration:** 30s
+- **Filters:** `b3_h_dak_50p>50`, `b3_bouwlagen>5`, `status='Pand in gebruik'`
+
+#### Scenario 12: Constant Combined Query (BBox + Filter)
+
+- **Start Time:** 385s
+- **VUs:** 10 constant
+- **Duration:** 30s
+- **Query:** `bbox=<medium>&filter=b3_bouwlagen>2&limit=50`
+
+#### Scenario 13: Constant Format Comparison
+
+- **Start Time:** 415s
+- **VUs:** 10 constant
+- **Duration:** 30s
+- **Formats:** JSON, CityJSON, CityJSONSeq, OBJ
+
+#### Scenarios 14-16: Ramping Versions
+
+- **Start Times:** 445s, 475s, 505s
+- **VUs:** Ramping 0→15→30→50→70→90→0
+- **Purpose:** Test scalability of attribute filters, combined queries, and format conversion
+
+</details>
+
+## 🎯 Key Features
+
+### OGC API - Features Compliant
+
+Tests standard OGC API endpoints and query parameters:
+
+- `/collections/{collection_id}/items` with bbox, limit, offset, filter, f parameters
+- `/collections/{collection_id}/items/{item_id}` for direct feature access
+- Validates pagination links, metadata, and response structure
+
+### Real Geographic Data
+
+Uses actual Dutch building data (BAG dataset):
+
+- Rotterdam bounding boxes: `84000,445000,85000,446000` (EPSG:7415)
+- Real feature IDs: `NL.IMBAG.Pand.0153100000209948`
+- Realistic attribute filters: `b3_h_dak_50p>50`, `b3_bouwlagen>5`
+
+### Multiple Output Formats
+
+Tests all supported serialization formats:
+
+- **JSON** (GeoJSON-like) - Default, fastest
+- **CityJSON** - Complete CityJSON object
+- **CityJSONSeq** - Newline-delimited streaming format
+- **OBJ** - Wavefront 3D mesh format
+
+### Comprehensive Metrics
+
+Tracks detailed performance data:
+
+- Overall HTTP metrics (duration, failures, throughput)
+- Scenario-specific metrics (per query type)
+- Custom metrics (bbox_query_time, id_query_time, filter_query_time)
+- Response validation (checks pass rate)
+
+## 📖 Documentation
+
+### Essential Reading
+
+- **[SUMMARY.md](SUMMARY.md)** - What was created and why
+- **[TESTING_GUIDE.md](TESTING_GUIDE.md)** - Best practices, optimization, troubleshooting
+
+### Advanced Topics
+
+- **[BENCHMARK_COMPARISON.md](BENCHMARK_COMPARISON.md)** - vs original generic benchmark
+- **[INDEX.md](INDEX.md)** - Complete documentation index
+
+### Configuration & Examples
+
+- **[fcb-benchmark.config.example.js](fcb-benchmark.config.example.js)** - Configuration template
+- **[.github/workflows/benchmark.yml.example](.github/workflows/benchmark.yml.example)** - CI/CD integration
+
+## 🛠️ Installation
+
+### Prerequisites
+
+- **k6** - Load testing tool
+- **bash** - Shell script execution
+- **jq** (optional) - JSON processing
+
+### Install k6
+
+**macOS:**
+
 ```bash
-# macOS (using Homebrew)
 brew install k6
+```
 
-# Ubuntu/Debian
+**Linux (Debian/Ubuntu):**
+
+```bash
 sudo gpg -k
 sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
 echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
 sudo apt-get update
 sudo apt-get install k6
+```
 
-# Windows (using Chocolatey)
+**Windows:**
+
+```powershell
 choco install k6
-
-# Or download from https://k6.io/docs/getting-started/installation/
 ```
 
-## Quick Start
+For other methods: <https://k6.io/docs/getting-started/installation/>
 
-### Start the API Server
+### Setup
 
 ```bash
-npm start
+# Clone or navigate to benchmark directory
+cd flatcitybuf-benchmark
+
+# Make scripts executable
+chmod +x run-fcb-benchmark.sh
+
+# Verify installation
+k6 version
 ```
 
-The server will start on `http://localhost:3000` with the following endpoints:
+## 💻 Usage
 
-- `GET /health` - Health check
-- `GET /api/cities/small` - Get 10 cities
-- `GET /api/cities/medium` - Get 100 cities
-- `GET /api/cities/large` - Get 1000 cities
-- `GET /api/compute/prime/:limit` - CPU-intensive prime number calculation
-- `POST /api/cities` - Create a new city
+### Basic Usage
 
-### Run Benchmarks
-
-#### Full Benchmark Suite (with resource monitoring)
+**Test local API:**
 
 ```bash
-npm run benchmark
+./run-fcb-benchmark.sh
 ```
 
-This will:
-1. Start the API server
-2. Monitor CPU and memory usage
-3. Run all 5 benchmark scenarios
-4. Generate detailed reports
-5. Save results to `benchmark-results/` directory
-
-#### Quick Benchmark
+**Test remote API:**
 
 ```bash
-npm run benchmark:quick
+./run-fcb-benchmark.sh -u https://your-api-url.com
 ```
 
-Run a quick 30-second benchmark with 10 virtual users.
-
-#### Manual k6 Run
+Or using environment variable:
 
 ```bash
-# Start server in background
-npm start &
-
-# Run k6 benchmark
-k6 run benchmark.js
-
-# Or with custom options
-k6 run --vus 20 --duration 60s benchmark.js
+BASE_URL=https://your-api-url.com ./run-fcb-benchmark.sh
 ```
 
-## Benchmark Scenarios
+### Run Modes
 
-The benchmark suite includes 5 different scenarios:
-
-### 1. Small Dataset - Constant Load
-- **Endpoint**: `/api/cities/small`
-- **Virtual Users**: 10
-- **Duration**: 30 seconds
-- **Purpose**: Test baseline performance with small payloads
-
-### 2. Medium Dataset - Ramping Load
-- **Endpoint**: `/api/cities/medium`
-- **Virtual Users**: 0 → 20 → 0 (ramping)
-- **Duration**: 40 seconds
-- **Purpose**: Test scalability with medium payloads
-
-### 3. Large Dataset - Spike Test
-- **Endpoint**: `/api/cities/large`
-- **Virtual Users**: 0 → 50 → 0 (spike)
-- **Duration**: 20 seconds
-- **Purpose**: Test behavior under sudden load with large payloads
-
-### 4. Compute Intensive
-- **Endpoint**: `/api/compute/prime/:limit`
-- **Virtual Users**: 5
-- **Duration**: 30 seconds
-- **Purpose**: Test CPU-intensive operations
-
-### 5. POST Operations
-- **Endpoint**: `POST /api/cities`
-- **Rate**: 10 requests/second
-- **Duration**: 30 seconds
-- **Purpose**: Test write operations
-
-## Performance Thresholds
-
-The benchmark enforces these performance thresholds:
-
-- **Global**:
-  - 95th percentile response time < 500ms
-  - 99th percentile response time < 1000ms
-  - Error rate < 1%
-
-- **Per Scenario**:
-  - Small dataset: p95 < 200ms
-  - Medium dataset: p95 < 400ms
-  - Large dataset: p95 < 800ms
-  - Compute intensive: p95 < 1000ms
-  - POST operations: p95 < 300ms
-
-## Results and Metrics
-
-After running benchmarks, results are saved in the `benchmark-results/` directory:
-
-- `metrics_TIMESTAMP.csv` - CPU and memory usage data
-- `metrics_TIMESTAMP.txt` - Summary statistics
-- `k6_results_TIMESTAMP.json` - Detailed k6 performance metrics
-
-### Understanding the Results
-
-**CPU Metrics**:
-- System CPU% - Overall CPU usage
-- Server CPU% - CPU usage by the API server
-- Peak values indicate maximum load
-
-**Memory Metrics**:
-- Memory Used% - Percentage of total memory in use
-- Server Memory% - Memory used by the API server
-- RSS (Resident Set Size) - Actual memory in use
-
-**k6 Metrics**:
-- `http_req_duration` - Response time
-- `http_req_failed` - Failed requests rate
-- `http_reqs` - Total requests per second
-- `vus` - Virtual users (concurrent connections)
-
-## Resource Reservation for Fair Testing
-
-For accurate and reproducible benchmarks, it's important to reserve CPU and memory resources. See [RESOURCE_RESERVATION.md](./RESOURCE_RESERVATION.md) for detailed instructions on:
-
-- CPU pinning with `taskset`
-- Memory limits with `ulimit` and cgroups
-- CPU isolation for dedicated testing
-- Process priority management
-- Best practices for benchmark environments
-
-### Quick Resource Reservation Example
+**Full benchmark** (all scenarios, ~9 minutes):
 
 ```bash
-# Reserve CPUs 0-3 for the server
-taskset -c 0-3 node server.js &
-
-# Run benchmark on CPUs 4-7
-taskset -c 4-7 k6 run benchmark.js
+./run-fcb-benchmark.sh -m full
 ```
 
-## Customization
+**Quick test** (reduced duration, ~10 seconds):
 
-### Modifying Benchmark Parameters
+```bash
+./run-fcb-benchmark.sh -m quick
+```
 
-Edit `benchmark.js` to customize:
+**Stress test** (high load):
+
+```bash
+./run-fcb-benchmark.sh -m stress
+```
+
+### Output Formats
+
+**JSON output** (default):
+
+```bash
+./run-fcb-benchmark.sh -o json
+```
+
+**HTML report:**
+
+```bash
+./run-fcb-benchmark.sh -o html
+```
+
+**Summary only:**
+
+```bash
+./run-fcb-benchmark.sh -o summary
+```
+
+### Combined Options
+
+```bash
+./run-fcb-benchmark.sh -u https://api.example.com -m full -o html
+```
+
+### Manual k6 Execution
+
+If you prefer to run k6 directly:
+
+```bash
+# Run all scenarios
+BASE_URL=http://localhost:8080 k6 run fcb-benchmark.js
+
+# Custom VUs and duration
+BASE_URL=http://localhost:8080 k6 run --vus 10 --duration 30s fcb-benchmark.js
+
+# Output to JSON
+BASE_URL=http://localhost:8080 k6 run --out json=results.json fcb-benchmark.js
+
+# Docker execution
+docker run -it --rm -v $(pwd):/app -w /app docker.io/grafana/k6 run --out json=results.json fcb-benchmark.js
+```
+
+## 📈 Understanding Results
+
+### Console Output
+
+```
+✓ status is 200
+✓ response has data
+✓ response time < 500ms
+
+checks.........................: 97.23% ✓ 2000      ✗ 56
+http_req_duration..............: avg=245ms  p(95)=450ms p(99)=650ms
+http_req_failed................: 2.15%  ✓ 43        ✗ 1957
+bbox_query_time................: avg=312ms  p(95)=580ms
+id_query_time..................: avg=128ms  p(95)=245ms
+```
+
+### What to Look For
+
+**✅ Good Performance:**
+
+- p(95) below threshold for each scenario
+- Error rate < 5%
+- Check pass rate > 95%
+- Consistent response times
+
+**❌ Issues:**
+
+- p(95) above threshold
+- High error rate (> 5%)
+- Low check pass rate (< 90%)
+- Erratic response times
+
+### Key Metrics
+
+**Standard HTTP Metrics:**
+
+- **http_req_duration**: Total time for HTTP request (waiting + receiving)
+- **http_req_waiting**: Time spent waiting for response from server (TTFB)
+- **http_req_receiving**: Time spent receiving response data
+- **http_req_failed**: Rate of failed requests
+- **iterations**: Number of complete test iterations
+- **vus**: Number of virtual users
+
+**Custom Metrics:**
+
+- **bbox_query_time**: Bounding box query-specific timing
+- **id_query_time**: ID lookup query-specific timing
+- **filter_query_time**: Attribute filter query-specific timing
+- **errors**: Custom error rate metric
+- **response_time**: Overall response time trend
+
+**Important Values:**
+
+- **p(95)**: 95% of requests faster than this value
+- **p(99)**: 99% of requests faster than this value
+
+See [TESTING_GUIDE.md](TESTING_GUIDE.md#understanding-results) for detailed analysis.
+
+## 🎓 Examples
+
+### Example 1: Baseline Test
+
+```bash
+# Run baseline test
+./run-fcb-benchmark.sh -m full -o json
+
+# Save baseline
+cp results/fcb_benchmark_*.json baseline.json
+```
+
+### Example 2: Compare Before/After
+
+```bash
+# Before optimization
+./run-fcb-benchmark.sh -m full -o json
+# Note p(95) values
+
+# Make optimizations...
+
+# After optimization
+./run-fcb-benchmark.sh -m full -o json
+# Compare p(95) values
+```
+
+### Example 3: Test Different Environments
+
+```bash
+# Test staging
+./run-fcb-benchmark.sh -u https://staging.api.com -m quick
+
+# Test production
+./run-fcb-benchmark.sh -u https://prod.api.com -m quick
+
+# Compare results
+```
+
+### Example 4: CI/CD Integration
+
+```yaml
+# GitHub Actions example
+- name: Run Benchmark
+  run: ./run-fcb-benchmark.sh -u ${{ secrets.API_URL }} -m full -o json
+```
+
+See [.github/workflows/benchmark.yml.example](.github/workflows/benchmark.yml.example) for complete example.
+
+## 🔧 Customization
+
+### Custom Bounding Boxes
+
+Edit `fcb-benchmark.js`:
 
 ```javascript
-export const options = {
-  scenarios: {
-    your_scenario: {
-      executor: 'constant-vus',
-      vus: 10,        // Number of virtual users
-      duration: '30s', // Test duration
-      // ... other options
-    }
-  }
+const TEST_BBOXES = {
+  my_area: 'minx,miny,maxx,maxy',  // Your coordinates
 };
-```
 
-### Adding New Endpoints
-
-1. Add endpoint to `server.js`:
-```javascript
-app.get('/api/your-endpoint', (req, res) => {
-  // Your logic
-  res.json({ data: 'your data' });
-});
-```
-
-2. Add test function to `benchmark.js`:
-```javascript
-export function testYourEndpoint() {
-  const res = http.get(`${BASE_URL}/api/your-endpoint`);
-  // Add checks
+export function testMyArea() {
+  const res = http.get(
+    `${BASE_URL}/collections/pand/items?bbox=${TEST_BBOXES.my_area}&limit=100`
+  );
+  // ... validation
 }
 ```
 
-3. Add scenario to `options.scenarios` in `benchmark.js`
+### Custom Feature IDs
 
-## Environment Variables
-
-- `PORT` - Server port (default: 3000)
-- `BASE_URL` - API base URL for k6 tests (default: http://localhost:3000)
-
-Example:
-```bash
-PORT=8080 npm start
-BASE_URL=http://localhost:8080 k6 run benchmark.js
+```javascript
+const SAMPLE_FEATURE_IDS = [
+  'your-feature-id-1',
+  'your-feature-id-2',
+  'your-feature-id-3',
+];
 ```
 
-## Troubleshooting
+### Custom Filters
 
-### Server won't start
-- Check if port 3000 is already in use: `lsof -i :3000`
-- Kill existing process: `kill -9 <PID>`
-
-### k6 not found
-- Install k6 (see Installation section)
-- Or use npx: `npx k6 run benchmark.js`
-
-### Permission denied on run-benchmark.sh
-```bash
-chmod +x run-benchmark.sh
+```javascript
+const filters = [
+  'your_attribute>value',
+  'another_attribute BETWEEN 10 AND 20',
+];
 ```
 
-### High error rates in benchmarks
-- Check server logs for errors
-- Verify server is running: `curl http://localhost:3000/health`
-- Reduce load (lower VUs or duration)
+See [fcb-benchmark.config.example.js](fcb-benchmark.config.example.js) for more examples.
 
-## Contributing
+## 🐛 Troubleshooting
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+### Common Issues
 
-## License
+**"k6 not found"**
 
-ISC
+```bash
+# Install k6
+brew install k6  # macOS
+```
+
+**"API not accessible"**
+
+```bash
+# Verify API is running
+curl http://localhost:8080/collections/pand
+```
+
+**High error rates**
+
+```bash
+# Check API logs
+docker logs <container_id>
+
+# Reduce load
+./run-fcb-benchmark.sh -m quick
+```
+
+**Slow performance**
+
+```bash
+# Check API resources
+top  # or htop
+
+# Test with smaller dataset
+# Edit fcb-benchmark.js, reduce limits
+```
+
+See [TESTING_GUIDE.md](TESTING_GUIDE.md#troubleshooting) for detailed troubleshooting.
+
+## 🔍 Performance Expectations
+
+### Expected Performance (Constant VU Tests)
+
+Based on the FlatCityBuf API architecture with 10 concurrent VUs:
+
+| Query Type | VUs | Expected p(95) | What It Tests |
+|------------|-----|---------------|---------------|
+| ID Lookup | 10 | < 300ms | Highly optimized with attribute index |
+| BBox (100m²) | 10 | < 500ms | Small result set, minimal data transfer |
+| BBox (1km²) | 10 | < 1000ms | Medium result set, typical urban query |
+| BBox (5km²) | 10 | < 3000ms | Large result set |
+| BBox (10km²) | 10 | < 10000ms | Very large result set, stress test |
+| Attr Filter | 10 | < 1000ms | Index lookup + feature retrieval |
+| Combined Query | 10 | < 2000ms | Spatial + attribute filtering |
+| Format Conversion | 10 | < 3000ms | Varies by format (OBJ slowest) |
+
+### Expected Performance (Ramping VU Tests)
+
+Ramping tests (0→90 VUs) test scalability and identify breaking points. Performance degrades gracefully:
+
+- **Low load (15-30 VUs):** Similar to constant VU performance
+- **Medium load (50-70 VUs):** 1.5-2x slower than baseline
+- **High load (90 VUs):** 2-3x slower than baseline, possible increased error rates
+
+### Performance Factors
+
+**Efficient:**
+
+- Spatial queries (bbox) using R-tree index
+- ID lookups using attribute index
+- HTTP range request optimization
+- Zero-copy FlatBuffers access
+
+**Less Efficient:**
+
+- Complex attribute filtering (multiple range requests)
+- Very large result sets (10000+ features)
+- Format conversion (especially OBJ)
+- Combined spatial + attribute queries
+
+### Test Data Details
+
+**Bounding Boxes** (EPSG:7415 - RD New + NAP height, centered on Rotterdam):
+
+- **Small:** `91350,437950,91450,438050` (100m × 100m)
+- **Medium:** `90900,437500,91900,438500` (1km × 1km)
+- **Large:** `88900,435500,93900,440500` (5km × 5km)
+- **X-Large:** `86400,433000,96400,443000` (10km × 10km)
+
+**Sample Feature IDs:**
+
+- `NL.IMBAG.Pand.0503100000032914` (TU Delft BK building)
+- `NL.IMBAG.Pand.0363100012185598` (Amsterdam Central Station)
+- `NL.IMBAG.Pand.0014100010938997` (Groningen Station)
+- `NL.IMBAG.Pand.0772100000295227` (Eindhoven Station)
+- `NL.IMBAG.Pand.0153100000261851` (Enschede Station)
+
+**Example Attribute Filters:**
+
+- Height: `b3_h_dak_50p>50` (buildings taller than 50m)
+- Floors: `b3_bouwlagen>5` (buildings with more than 5 floors)
+- Status: `status='Pand in gebruik'` (buildings in use)
+
+## ⚙️ Advanced Usage
+
+### Configuration
+
+**Environment Variables:**
+
+- `BASE_URL`: API base URL (default: `http://localhost:8080`)
+- `COLLECTION_ID`: Collection to query (default: `pand`)
+
+### Running Specific Scenarios
+
+**Option 1: Comment out scenarios**
+
+Edit `fcb-benchmark.js` and comment out scenarios in the `options.scenarios` object:
+
+```javascript
+scenarios: {
+  constant_bbox_query_10: { ... },
+  // constant_bbox_query_100: { ... },  // Disabled
+  // constant_bbox_query_1000: { ... }, // Disabled
+}
+```
+
+**Option 2: Run specific test groups**
+
+Only run constant tests (Groups 1, 3, 5) or only ramping tests (Groups 2, 4, 6) by selectively commenting scenarios.
+
+**Option 3: Quick single test**
+
+Use k6 directly with the default function:
+
+```bash
+k6 run --vus 10 --duration 30s fcb-benchmark.js
+```
+
+This runs only `testBboxQuery100()` without the full scenario suite.
+
+### Custom Thresholds
+
+Modify thresholds in `fcb-benchmark.js` to set specific performance targets:
+
+```javascript
+thresholds: {
+  // Global thresholds (apply to all scenarios)
+  http_req_duration: ['p(95)<5000', 'p(99)<10000'],
+  http_req_failed: ['rate<0.05'],
+
+  // Per-scenario thresholds (more specific)
+  'http_req_duration{scenario:constant_10vus_bbox_10features_30s}': ['p(95)<500'],
+  'http_req_duration{scenario:constant_10vus_bbox_100features_30s}': ['p(95)<1000'],
+  'http_req_duration{scenario:constant_10vus_id_lookup_30s}': ['p(95)<300'],
+}
+```
+
+Note: Per-scenario thresholds are currently commented out in the default configuration. Uncomment and customize as needed.
+
+### Modifying Scenarios
+
+Edit `fcb-benchmark.js` to customize:
+
+- **Virtual users (VUs):** Adjust `vus` property in each scenario
+- **Test duration:** Modify `duration` property
+- **Start times:** Adjust `startTime` to prevent scenario overlap
+- **Ramping stages:** Customize `stages` array for ramping scenarios
+- **Thresholds:** Set performance expectations in `thresholds` object
+- **Bounding boxes:** Modify `TEST_BBOXES` object coordinates
+- **Filter conditions:** Update filter arrays in test functions
+
+**Important:** When adjusting start times, ensure 5-second buffers between scenarios to prevent interference.
+
+### Cloud Testing
+
+Use k6 Cloud for distributed load testing:
+
+```bash
+k6 cloud fcb-benchmark.js
+```
+
+### Adding New Scenarios
+
+To add new benchmark scenarios:
+
+1. **Define the test function** - Create a new exported function (e.g., `export function testNewScenario() { ... }`)
+2. **Add scenario configuration** - Add to `options.scenarios` with:
+   - `executor`: Choose executor type (`constant-vus`, `ramping-vus`, etc.)
+   - `vus` or `stages`: Define load pattern
+   - `duration`: Set test duration
+   - `exec`: Reference your test function name
+   - `tags`: Add metadata for result filtering
+   - `startTime`: Calculate based on previous scenarios + buffer
+3. **Define thresholds** (optional) - Add performance expectations to `options.thresholds`
+4. **Update documentation** - Add scenario details to this README
+5. **Test locally** - Run and verify the new scenario works correctly
+
+**Important:** Maintain the 5-second buffer between start times to prevent interference.
+
+## 📝 What's Different from Generic Benchmark
+
+The original `benchmark.js` provides generic API load testing. This FlatCityBuf benchmark is specialized for:
+
+### Original Benchmark
+
+- Generic CRUD operations
+- Simple size-based queries
+- POST operations
+- Compute operations
+
+### FlatCityBuf Benchmark
+
+- **Spatial queries** (real bounding boxes)
+- **Attribute queries** (indexed filters)
+- **Multiple formats** (CityJSON, OBJ, etc.)
+- **OGC compliance** (pagination, links)
+- **Real geographic data**
+- **Index performance** (R-tree, B+Tree)
+
+See [BENCHMARK_COMPARISON.md](BENCHMARK_COMPARISON.md) for detailed comparison.
+
+## 🤝 Contributing
+
+Contributions welcome! To add scenarios or improve documentation:
+
+1. Fork the repository
+2. Make your changes
+3. Test thoroughly
+4. Submit a pull request
+
+## 📄 License
+
+Same as FlatCityBuf project.
+
+## 🔗 Resources
+
+- **k6 Documentation**: <https://k6.io/docs/>
+- **FlatCityBuf API**: flatcitybuf/src/rust/fcb_api/README.md
+- **OGC API - Features**: <https://ogcapi.ogc.org/features/>
+- **CityJSON**: <https://www.cityjson.org/>
+
+## 📞 Support
+
+- **Documentation**: See [INDEX.md](INDEX.md) for complete doc index
+- **Issues**: Create GitHub issue
+- **Questions**: Review docs first, then ask
+
+---
+
+**Quick Links:**
+[Summary](SUMMARY.md) |
+[Testing Guide](TESTING_GUIDE.md) |
+[Benchmark Comparison](BENCHMARK_COMPARISON.md) |
+[Doc Index](INDEX.md)
