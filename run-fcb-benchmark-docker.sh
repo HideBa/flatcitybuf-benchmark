@@ -347,6 +347,7 @@ CONTAINER_ARGS=(
     "--rm"
     "-i"
     "--network=host"  # Use host network for easier localhost access
+    "--user" "$(id -u):$(id -g)"  # Run as current user to avoid permission issues
     "-w" "/app"
     "-e" "BASE_URL=${BASE_URL}"
     "-e" "K6_SUMMARY_EXPORT=/results/${OUTPUT_FILE}_summary.json"
