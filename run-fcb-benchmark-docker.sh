@@ -397,6 +397,11 @@ CONTAINER_ARGS=(
 if [ -n "$HTML_EXPORT_ENABLED" ]; then
     CONTAINER_ARGS+=("-e" "K6_WEB_DASHBOARD=true")
     CONTAINER_ARGS+=("-e" "K6_WEB_DASHBOARD_EXPORT=${HTML_EXPORT_ENABLED}")
+    echo -e "${BLUE}Web dashboard export will be saved to: ${HTML_EXPORT_ENABLED}${NC}"
+    if [ "$RUN_MODE" = "quick" ]; then
+        echo -e "${YELLOW}Note: Quick mode (10s) may be too short for HTML export with graphs.${NC}"
+        echo -e "${YELLOW}      Use 'full' mode for complete HTML reports with visualizations.${NC}"
+    fi
 fi
 
 # Add user mapping for proper file permissions
@@ -456,6 +461,13 @@ echo "========================================"
 
 if [ $K6_EXIT_CODE -eq 0 ]; then
     echo -e "${GREEN}Benchmark completed successfully!${NC}"
+
+    # Debug: List files in results directory if HTML export was enabled
+    if [ -n "$HTML_EXPORT_ENABLED" ]; then
+        echo -e "\n${BLUE}Debug: Checking results directory...${NC}"
+        echo "Files in ${RESULTS_DIR}:"
+        ls -lh "${RESULTS_DIR}/${OUTPUT_FILE}"* 2>/dev/null || echo "  No matching files found"
+    fi
 
     # Display resource monitoring summary
     if [ "$ENABLE_MONITORING" = "true" ] && [ -f "$METRICS_CSV" ]; then
