@@ -129,6 +129,12 @@ if ! command -v "$CONTAINER_ENGINE" &> /dev/null; then
     exit 1
 fi
 
+# Add http:// protocol if missing
+if [[ ! "$BASE_URL" =~ ^https?:// ]]; then
+    BASE_URL="http://${BASE_URL}"
+    echo -e "${BLUE}Added http:// protocol to URL: ${BASE_URL}${NC}"
+fi
+
 # Adjust URL for podman's host access
 if [ "$CONTAINER_ENGINE" = "podman" ]; then
     # Replace host.docker.internal with host.containers.internal for podman
@@ -136,8 +142,9 @@ if [ "$CONTAINER_ENGINE" = "podman" ]; then
 
     # Suggest correct hostname if localhost is used
     if [[ "$BASE_URL" == *"localhost"* ]] || [[ "$BASE_URL" == *"127.0.0.1"* ]]; then
-        echo -e "${YELLOW}Warning: Using 'localhost' in URL may not work in containers${NC}"
+        echo -e "${YELLOW}Warning: Using 'localhost' or '127.0.0.1' may not work in containers${NC}"
         echo -e "${YELLOW}Consider using 'host.containers.internal' for Podman${NC}"
+        echo ""
     fi
 fi
 
@@ -340,19 +347,21 @@ CONTAINER_ARGS=(
     "--rm"
     "-i"
     "--network=host"  # Use host network for easier localhost access
-    "-v" "${SCRIPT_DIR}:/app:ro"  # Mount benchmark script (read-only)
-    "-v" "${RESULTS_DIR}:/results:rw"  # Mount results directory (read-write)
     "-w" "/app"
     "-e" "BASE_URL=${BASE_URL}"
+    "-e" "K6_SUMMARY_EXPORT=/results/${OUTPUT_FILE}_summary.json"
 )
 
-# Add SELinux labels for podman on Linux
+# Add volume mounts with SELinux labels for podman on Linux
+# Mount results directory at /app/results so handleSummary can write there
 if [ "$CONTAINER_ENGINE" = "podman" ] && [[ "$OSTYPE" == "linux-gnu"* ]]; then
     CONTAINER_ARGS+=("-v" "${SCRIPT_DIR}:/app:ro,Z")
-    CONTAINER_ARGS+=("-v" "${RESULTS_DIR}:/results:rw,Z")
+    CONTAINER_ARGS+=("-v" "${RESULTS_DIR}:/app/results:rw,Z")
+    CONTAINER_ARGS+=("-v" "${RESULTS_DIR}:/results:rw,Z")  # Also mount at /results for k6 output
 else
     CONTAINER_ARGS+=("-v" "${SCRIPT_DIR}:/app:ro")
-    CONTAINER_ARGS+=("-v" "${RESULTS_DIR}:/results:rw")
+    CONTAINER_ARGS+=("-v" "${RESULTS_DIR}:/app/results:rw")
+    CONTAINER_ARGS+=("-v" "${RESULTS_DIR}:/results:rw")  # Also mount at /results for k6 output
 fi
 
 CONTAINER_ARGS+=("$K6_IMAGE")

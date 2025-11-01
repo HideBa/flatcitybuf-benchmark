@@ -15,6 +15,12 @@ brew install k6  # macOS
 ./run-fcb-benchmark.sh
 ```
 
+**Or use Docker/Podman** (no k6 installation needed):
+
+```bash
+./run-fcb-benchmark-docker.sh
+```
+
 **That's it!** Results will be saved to `results/` directory.
 
 ## 📋 What This Tests
