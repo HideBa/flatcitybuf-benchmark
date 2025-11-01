@@ -405,6 +405,9 @@ const SAMPLE_FEATURE_IDS = [
 ];
 
 // Default function for quick tests with --vus and --duration flags
+// NOTE: This function only runs when k6 is executed WITH --vus/--duration flags.
+// When scenarios are defined in options.scenarios and k6 runs WITHOUT those flags,
+// the scenarios will execute instead and this default function will NOT run.
 export default function () {
   testBboxQuery100();
 }

@@ -285,10 +285,10 @@ export BASE_URL
 
 if [ "$RUN_MODE" = "full" ]; then
     # Run full benchmark with all scenarios
-    k6 run $K6_OUTPUT_OPTIONS "$BENCHMARK_SCRIPT"
+    k6 run --summary-mode full $K6_OUTPUT_OPTIONS "$BENCHMARK_SCRIPT"
 else
     # Run with custom options
-    k6 run $K6_OPTIONS $K6_OUTPUT_OPTIONS "$BENCHMARK_SCRIPT"
+    k6 run --summary-mode full $K6_OPTIONS $K6_OUTPUT_OPTIONS "$BENCHMARK_SCRIPT"
 fi
 
 K6_EXIT_CODE=$?

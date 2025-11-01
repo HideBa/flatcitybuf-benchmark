@@ -439,10 +439,10 @@ echo ""
 
 if [ "$RUN_MODE" = "full" ]; then
     # Run full benchmark with all scenarios
-    $CONTAINER_ENGINE "${CONTAINER_ARGS[@]}" run $K6_OUTPUT_OPTIONS /app/fcb-benchmark.js
+    $CONTAINER_ENGINE "${CONTAINER_ARGS[@]}" run --summary-mode full $K6_OUTPUT_OPTIONS /app/fcb-benchmark.js
 else
     # Run with custom options
-    $CONTAINER_ENGINE "${CONTAINER_ARGS[@]}" run $K6_OPTIONS $K6_OUTPUT_OPTIONS /app/fcb-benchmark.js
+    $CONTAINER_ENGINE "${CONTAINER_ARGS[@]}" run --summary-mode full $K6_OPTIONS $K6_OUTPUT_OPTIONS /app/fcb-benchmark.js
 fi
 
 K6_EXIT_CODE=$?
