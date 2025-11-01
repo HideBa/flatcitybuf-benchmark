@@ -69,6 +69,14 @@ usage() {
     echo "    or 'host.containers.internal' (Podman) instead of 'localhost'"
     echo "  - The script auto-detects podman/docker, prioritizing podman"
     echo "  - Results are saved to: ${RESULTS_DIR}/"
+    echo ""
+    echo "Troubleshooting:"
+    echo "  If you get 'connection refused' or 'permission denied' errors:"
+    echo "  1. Ensure your API server is listening on 0.0.0.0 (not 127.0.0.1)"
+    echo "     Example: Start server with --host 0.0.0.0 or bind to all interfaces"
+    echo "  2. Use 'host.containers.internal' for Podman or 'host.docker.internal' for Docker"
+    echo "  3. Check firewall settings allow container access to host"
+    echo "  4. Verify with: curl http://localhost:PORT from host first"
     exit 1
 }
 
@@ -184,13 +192,17 @@ get_process_stats() {
 get_system_stats() {
     if [[ "$OSTYPE" == "darwin"* ]]; then
         # macOS
-        local cpu_usage=$(ps -A -o %cpu | awk '{s+=$1} END {print s}')
-        local mem_info=$(vm_stat | awk '/Pages active/ {active=$3} /Pages wired/ {wired=$4} /Pages free/ {free=$3} END {gsub(/\./,"",active); gsub(/\./,"",wired); gsub(/\./,"",free); total=(active+wired+free)*4096/1024/1024; used=(active+wired)*4096/1024/1024; printf "%.2f,%d,%d", (used/total)*100, used, total}')
+        local cpu_usage
+        local mem_info
+        cpu_usage=$(ps -A -o %cpu | awk '{s+=$1} END {print s}')
+        mem_info=$(vm_stat | awk '/Pages active/ {active=$3} /Pages wired/ {wired=$4} /Pages free/ {free=$3} END {gsub(/\./,"",active); gsub(/\./,"",wired); gsub(/\./,"",free); total=(active+wired+free)*4096/1024/1024; used=(active+wired)*4096/1024/1024; printf "%.2f,%d,%d", (used/total)*100, used, total}')
         echo "${cpu_usage},${mem_info}"
     else
         # Linux
-        local cpu_usage=$(top -bn1 | grep "Cpu(s)" | sed "s/.*, *\([0-9.]*\)%* id.*/\1/" | awk '{print 100 - $1}')
-        local mem_info=$(free -m | awk 'NR==2{printf "%.2f,%d,%d", $3*100/$2, $3, $2}')
+        local cpu_usage
+        local mem_info
+        cpu_usage=$(top -bn1 | grep "Cpu(s)" | sed "s/.*, *\([0-9.]*\)%* id.*/\1/" | awk '{print 100 - $1}')
+        mem_info=$(free -m | awk 'NR==2{printf "%.2f,%d,%d", $3*100/$2, $3, $2}')
         echo "${cpu_usage},${mem_info}"
     fi
 }
@@ -202,9 +214,13 @@ monitor_resources() {
     echo "Timestamp,System_CPU%,Memory_Used%,Memory_Used_MB,Memory_Total_MB,Server_CPU%,Server_Memory%,Server_RSS_KB" > "$output_csv"
 
     while [ "$ENABLE_MONITORING" = "true" ]; do
-        local timestamp=$(date +%s)
-        local system_stats=$(get_system_stats)
-        local process_stats=""
+        local timestamp
+        local system_stats
+        local process_stats
+
+        timestamp=$(date +%s)
+        system_stats=$(get_system_stats)
+        process_stats=""
 
         if [ -n "$server_pid" ]; then
             process_stats=$(get_process_stats "$server_pid")
@@ -272,6 +288,28 @@ if [ -n "$API_SERVER_PID" ]; then
     echo "Monitoring PID: $API_SERVER_PID"
 fi
 echo "========================================"
+echo ""
+
+# Test API connectivity before running benchmark
+echo -e "${YELLOW}Testing API connectivity...${NC}"
+TEST_URL="${BASE_URL}"
+# For container testing, use localhost if host.containers.internal or host.docker.internal
+if [[ "$BASE_URL" == *"host.containers.internal"* ]] || [[ "$BASE_URL" == *"host.docker.internal"* ]]; then
+    TEST_URL="${BASE_URL/host.containers.internal/localhost}"
+    TEST_URL="${TEST_URL/host.docker.internal/localhost}"
+fi
+
+if command -v curl &> /dev/null; then
+    if curl -s -f -m 5 "$TEST_URL" > /dev/null 2>&1 || curl -s -f -m 5 "${TEST_URL}/health" > /dev/null 2>&1; then
+        echo -e "${GREEN}✓ API is reachable from host${NC}"
+    else
+        echo -e "${YELLOW}⚠ Warning: Cannot reach API at $TEST_URL${NC}"
+        echo -e "${YELLOW}  The benchmark may fail if the API is not accessible${NC}"
+        echo -e "${YELLOW}  Make sure your API server is running and listening on 0.0.0.0 (not just 127.0.0.1)${NC}"
+    fi
+else
+    echo -e "${YELLOW}⚠ curl not found, skipping connectivity test${NC}"
+fi
 echo ""
 
 # Pull k6 image if not present
@@ -347,21 +385,28 @@ CONTAINER_ARGS=(
     "--rm"
     "-i"
     "--network=host"  # Use host network for easier localhost access
-    "--user" "$(id -u):$(id -g)"  # Run as current user to avoid permission issues
     "-w" "/app"
     "-e" "BASE_URL=${BASE_URL}"
     "-e" "K6_SUMMARY_EXPORT=/results/${OUTPUT_FILE}_summary.json"
 )
+
+# Add user mapping only for Docker (not Podman with SELinux)
+# Podman with :Z handles permissions automatically
+if [ "$CONTAINER_ENGINE" = "docker" ] || [[ "$OSTYPE" != "linux-gnu"* ]]; then
+    CONTAINER_ARGS+=("--user" "$(id -u):$(id -g)")
+fi
 
 # Add volume mounts with SELinux labels for podman on Linux
 # Mount results directory at /app/results so handleSummary can write there
 # Add volume mounts with proper permissions
 if [ "$CONTAINER_ENGINE" = "podman" ] && [[ "$OSTYPE" == "linux-gnu"* ]]; then
     CONTAINER_ARGS+=("-v" "${SCRIPT_DIR}:/app:ro,Z")
-    CONTAINER_ARGS+=("-v" "${RESULTS_DIR}:/results:rw,Z")  # Single mount point
+    CONTAINER_ARGS+=("-v" "${RESULTS_DIR}:/app/results:rw,Z")  # Mount to /app/results for handleSummary
+    CONTAINER_ARGS+=("-v" "${RESULTS_DIR}:/results:rw,Z")      # Also mount to /results for k6 output options
 else
     CONTAINER_ARGS+=("-v" "${SCRIPT_DIR}:/app:ro")
-    CONTAINER_ARGS+=("-v" "${RESULTS_DIR}:/results:rw")  # Single mount point
+    CONTAINER_ARGS+=("-v" "${RESULTS_DIR}:/app/results:rw")  # Mount to /app/results for handleSummary
+    CONTAINER_ARGS+=("-v" "${RESULTS_DIR}:/results:rw")      # Also mount to /results for k6 output options
 fi
 
 CONTAINER_ARGS+=("$K6_IMAGE")
