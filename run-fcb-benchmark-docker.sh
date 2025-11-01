@@ -348,22 +348,19 @@ esac
 # Prepare output options
 # Note: Paths inside container use /results mount point
 K6_OUTPUT_OPTIONS=""
-HTML_EXPORT_FILE=""
 case $OUTPUT_FORMAT in
     json)
         K6_OUTPUT_OPTIONS="--out json=/results/${OUTPUT_FILE}.json"
         ;;
     html)
-        K6_OUTPUT_OPTIONS="--out json=/results/${OUTPUT_FILE}.json"
-        HTML_EXPORT_FILE="/results/${OUTPUT_FILE}.html"
+        K6_OUTPUT_OPTIONS="--out json=/results/${OUTPUT_FILE}.json --web-dashboard --web-dashboard-export=/results/${OUTPUT_FILE}.html"
         echo -e "${BLUE}Enabling k6 web dashboard with HTML export${NC}"
         ;;
     summary)
         K6_OUTPUT_OPTIONS="--summary-export=/results/${OUTPUT_FILE}_summary.json"
         ;;
     all)
-        K6_OUTPUT_OPTIONS="--out json=/results/${OUTPUT_FILE}.json --summary-export=/results/${OUTPUT_FILE}_summary.json"
-        HTML_EXPORT_FILE="/results/${OUTPUT_FILE}.html"
+        K6_OUTPUT_OPTIONS="--out json=/results/${OUTPUT_FILE}.json --summary-export=/results/${OUTPUT_FILE}_summary.json --web-dashboard --web-dashboard-export=/results/${OUTPUT_FILE}.html"
         echo -e "${YELLOW}Note: Generating JSON, summary, and HTML outputs${NC}"
         ;;
     *)
@@ -392,12 +389,6 @@ CONTAINER_ARGS=(
     "-e" "BASE_URL=${BASE_URL}"
     "-e" "K6_SUMMARY_EXPORT=/results/${OUTPUT_FILE}_summary.json"
 )
-
-# Add k6 web dashboard environment variables if HTML export is enabled
-if [ -n "$HTML_EXPORT_FILE" ]; then
-    CONTAINER_ARGS+=("-e" "K6_WEB_DASHBOARD=true")
-    CONTAINER_ARGS+=("-e" "K6_WEB_DASHBOARD_EXPORT=${HTML_EXPORT_FILE}")
-fi
 
 # Add user mapping for proper file permissions
 # For Podman on Linux, use --userns=keep-id to map current user
