@@ -390,9 +390,12 @@ CONTAINER_ARGS=(
     "-e" "K6_SUMMARY_EXPORT=/results/${OUTPUT_FILE}_summary.json"
 )
 
-# Add user mapping only for Docker (not Podman with SELinux)
-# Podman with :Z handles permissions automatically
-if [ "$CONTAINER_ENGINE" = "docker" ] || [[ "$OSTYPE" != "linux-gnu"* ]]; then
+# Add user mapping for proper file permissions
+# For Podman on Linux, use --userns=keep-id to map current user
+# For Docker or non-Linux, use --user flag
+if [ "$CONTAINER_ENGINE" = "podman" ] && [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    CONTAINER_ARGS+=("--userns=keep-id")
+else
     CONTAINER_ARGS+=("--user" "$(id -u):$(id -g)")
 fi
 
