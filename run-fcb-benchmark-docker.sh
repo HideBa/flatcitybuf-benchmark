@@ -355,14 +355,13 @@ CONTAINER_ARGS=(
 
 # Add volume mounts with SELinux labels for podman on Linux
 # Mount results directory at /app/results so handleSummary can write there
+# Add volume mounts with proper permissions
 if [ "$CONTAINER_ENGINE" = "podman" ] && [[ "$OSTYPE" == "linux-gnu"* ]]; then
     CONTAINER_ARGS+=("-v" "${SCRIPT_DIR}:/app:ro,Z")
-    CONTAINER_ARGS+=("-v" "${RESULTS_DIR}:/app/results:rw,Z")
-    CONTAINER_ARGS+=("-v" "${RESULTS_DIR}:/results:rw,Z")  # Also mount at /results for k6 output
+    CONTAINER_ARGS+=("-v" "${RESULTS_DIR}:/results:rw,Z")  # Single mount point
 else
     CONTAINER_ARGS+=("-v" "${SCRIPT_DIR}:/app:ro")
-    CONTAINER_ARGS+=("-v" "${RESULTS_DIR}:/app/results:rw")
-    CONTAINER_ARGS+=("-v" "${RESULTS_DIR}:/results:rw")  # Also mount at /results for k6 output
+    CONTAINER_ARGS+=("-v" "${RESULTS_DIR}:/results:rw")  # Single mount point
 fi
 
 CONTAINER_ARGS+=("$K6_IMAGE")
