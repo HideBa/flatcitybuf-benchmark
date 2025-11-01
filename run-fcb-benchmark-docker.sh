@@ -348,20 +348,23 @@ esac
 # Prepare output options
 # Note: Paths inside container use /results mount point
 K6_OUTPUT_OPTIONS=""
+HTML_EXPORT_FILE=""
 case $OUTPUT_FORMAT in
     json)
         K6_OUTPUT_OPTIONS="--out json=/results/${OUTPUT_FILE}.json"
         ;;
     html)
         K6_OUTPUT_OPTIONS="--out json=/results/${OUTPUT_FILE}.json"
-        echo -e "${YELLOW}Note: HTML report generation requires k6-reporter (run separately)${NC}"
+        HTML_EXPORT_FILE="/results/${OUTPUT_FILE}.html"
+        echo -e "${BLUE}Enabling k6 web dashboard with HTML export${NC}"
         ;;
     summary)
         K6_OUTPUT_OPTIONS="--summary-export=/results/${OUTPUT_FILE}_summary.json"
         ;;
     all)
         K6_OUTPUT_OPTIONS="--out json=/results/${OUTPUT_FILE}.json --summary-export=/results/${OUTPUT_FILE}_summary.json"
-        echo -e "${YELLOW}Note: Generating both JSON and summary outputs${NC}"
+        HTML_EXPORT_FILE="/results/${OUTPUT_FILE}.html"
+        echo -e "${YELLOW}Note: Generating JSON, summary, and HTML outputs${NC}"
         ;;
     *)
         echo -e "${RED}Error: Invalid output format: $OUTPUT_FORMAT${NC}"
@@ -389,6 +392,12 @@ CONTAINER_ARGS=(
     "-e" "BASE_URL=${BASE_URL}"
     "-e" "K6_SUMMARY_EXPORT=/results/${OUTPUT_FILE}_summary.json"
 )
+
+# Add k6 web dashboard environment variables if HTML export is enabled
+if [ -n "$HTML_EXPORT_FILE" ]; then
+    CONTAINER_ARGS+=("-e" "K6_WEB_DASHBOARD=true")
+    CONTAINER_ARGS+=("-e" "K6_WEB_DASHBOARD_EXPORT=${HTML_EXPORT_FILE}")
+fi
 
 # Add user mapping for proper file permissions
 # For Podman on Linux, use --userns=keep-id to map current user
@@ -448,14 +457,6 @@ echo "========================================"
 if [ $K6_EXIT_CODE -eq 0 ]; then
     echo -e "${GREEN}Benchmark completed successfully!${NC}"
 
-    # Note about HTML report generation
-    if [ "$OUTPUT_FORMAT" = "html" ] && [ -f "${RESULTS_DIR}/${OUTPUT_FILE}.json" ]; then
-        echo ""
-        echo -e "${YELLOW}To generate HTML report, install k6-reporter:${NC}"
-        echo -e "${BLUE}  npm install -g k6-html-reporter${NC}"
-        echo -e "${BLUE}  k6-reporter ${RESULTS_DIR}/${OUTPUT_FILE}.json --output ${RESULTS_DIR}/${OUTPUT_FILE}.html${NC}"
-    fi
-
     # Display resource monitoring summary
     if [ "$ENABLE_MONITORING" = "true" ] && [ -f "$METRICS_CSV" ]; then
         display_resource_summary "$METRICS_CSV"
@@ -471,7 +472,11 @@ if [ $K6_EXIT_CODE -eq 0 ]; then
             ;;
         html)
             echo "  - JSON: ${RESULTS_DIR}/${OUTPUT_FILE}.json"
-            echo "  - HTML: ${RESULTS_DIR}/${OUTPUT_FILE}.html (generate manually)"
+            if [ -f "${RESULTS_DIR}/${OUTPUT_FILE}.html" ]; then
+                echo "  - HTML: ${RESULTS_DIR}/${OUTPUT_FILE}.html"
+            else
+                echo -e "  - HTML: ${YELLOW}${RESULTS_DIR}/${OUTPUT_FILE}.html (not found)${NC}"
+            fi
             ;;
         summary)
             echo "  - Summary: ${RESULTS_DIR}/${OUTPUT_FILE}_summary.json"
@@ -479,6 +484,11 @@ if [ $K6_EXIT_CODE -eq 0 ]; then
         all)
             echo "  - JSON: ${RESULTS_DIR}/${OUTPUT_FILE}.json"
             echo "  - Summary: ${RESULTS_DIR}/${OUTPUT_FILE}_summary.json"
+            if [ -f "${RESULTS_DIR}/${OUTPUT_FILE}.html" ]; then
+                echo "  - HTML: ${RESULTS_DIR}/${OUTPUT_FILE}.html"
+            else
+                echo -e "  - HTML: ${YELLOW}${RESULTS_DIR}/${OUTPUT_FILE}.html (not found)${NC}"
+            fi
             ;;
     esac
 
