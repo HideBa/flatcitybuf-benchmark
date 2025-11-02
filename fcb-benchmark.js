@@ -11,8 +11,32 @@ const bboxQueryTime = new Trend('bbox_query_time');
 const idQueryTime = new Trend('id_query_time');
 const filterQueryTime = new Trend('filter_query_time');
 
+// Per-scenario metrics for detailed tracking
+const constantBbox10Time = new Trend('constant_bbox_10_response_time');
+const constantBbox100Time = new Trend('constant_bbox_100_response_time');
+const constantBbox1000Time = new Trend('constant_bbox_1000_response_time');
+const constantBbox10000Time = new Trend('constant_bbox_10000_response_time');
+const rampingBbox10Time = new Trend('ramping_bbox_10_response_time');
+const rampingBbox100Time = new Trend('ramping_bbox_100_response_time');
+const rampingBbox1000Time = new Trend('ramping_bbox_1000_response_time');
+const rampingBbox10000Time = new Trend('ramping_bbox_10000_response_time');
+const constantIdLookupTime = new Trend('constant_id_lookup_response_time');
+const rampingIdLookupTime = new Trend('ramping_id_lookup_response_time');
+const constantAttributeFilterSmallTime = new Trend('constant_attribute_filter_small_response_time');
+const constantAttributeFilterMediumTime = new Trend('constant_attribute_filter_medium_response_time');
+const rampingAttributeFilterSmallTime = new Trend('ramping_attribute_filter_small_response_time');
+const rampingAttributeFilterMediumTime = new Trend('ramping_attribute_filter_medium_response_time');
+const constantCombinedQueryTime = new Trend('constant_combined_query_response_time');
+const rampingCombinedQueryTime = new Trend('ramping_combined_query_response_time');
+const constantFormatComparisonTime = new Trend('constant_format_comparison_response_time');
+const rampingFormatComparisonTime = new Trend('ramping_format_comparison_response_time');
+
+
+
 // Configuration for different scenarios
 export const options = {
+  systemTags: ['scenario', 'status', 'method', 'url'],
+
   scenarios: {
     // ------------------------------------------------------------
     // Test group1: Constant bbox query scenarios to compare system's throughput capacity
@@ -71,7 +95,7 @@ export const options = {
         { duration: '5s', target: 90 },
         { duration: '5s', target: 0 },
       ],
-      exec: 'testBboxQuery10',
+      exec: 'testBboxQuery10Ramping',
       tags: { scenario: 'ramping_10_50_70_90vus_bbox_10features_30s', query_type: 'bbox' },
       startTime: '140s', // Start after all constant tests (105s + 30s + 5s)
     },
@@ -88,7 +112,7 @@ export const options = {
         { duration: '5s', target: 90 },
         { duration: '5s', target: 0 },
       ],
-      exec: 'testBboxQuery100',
+      exec: 'testBboxQuery100Ramping',
       tags: { scenario: 'ramping_10_50_70_90vus_bbox_100features_30s', query_type: 'bbox' },
       startTime: '175s', // Start after ramping_bbox_query_10 (140s + 30s + 5s)
     },
@@ -105,7 +129,7 @@ export const options = {
         { duration: '5s', target: 90 },
         { duration: '5s', target: 0 },
       ],
-      exec: 'testBboxQuery1000',
+      exec: 'testBboxQuery1000Ramping',
       tags: { scenario: 'ramping_10_30_50_70_90vus_bbox_1000features_30s', query_type: 'bbox' },
       startTime: '210s', // Start after ramping_bbox_query_100 (175s + 30s + 5s)
     },
@@ -122,7 +146,7 @@ export const options = {
         { duration: '5s', target: 90 },
         { duration: '5s', target: 0 },
       ],
-      exec: 'testBboxQuery10000',
+      exec: 'testBboxQuery10000Ramping',
       tags: { scenario: 'ramping_10_50_70_90vus_bbox_10000features_30s', query_type: 'bbox' },
       startTime: '245s', // Start after ramping_bbox_query_1000 (210s + 30s + 5s)
     },
@@ -154,7 +178,7 @@ export const options = {
         { duration: '5s', target: 90 },
         { duration: '5s', target: 0 },
       ],
-      exec: 'testIdLookup',
+      exec: 'testIdLookupRamping',
       tags: { scenario: 'ramping_10_20_30_40_50_60vus_id_lookup_30s', query_type: 'id' },
       startTime: '315s', // Start after ramping_bbox_query_10000 (280s + 30s + 5s)
     },
@@ -206,7 +230,7 @@ export const options = {
         { duration: '5s', target: 90 },
         { duration: '5s', target: 0 },
       ],
-      exec: 'testAttributeFilterSmall',
+      exec: 'testAttributeFilterSmallRamping',
       tags: { scenario: 'ramping_10_20_30_40_50_60vus_attribute_filter_small_30s', query_type: 'filter' },
       startTime: '445s', // Start after constant_format_comparison (415s + 30s + 5s)
     },
@@ -223,7 +247,7 @@ export const options = {
         { duration: '5s', target: 90 },
         { duration: '5s', target: 0 },
       ],
-      exec: 'testCombinedQuery',
+      exec: 'testCombinedQueryRamping',
       tags: { scenario: 'ramping_10_20_30_40_50_60vus_combined_query_30s', query_type: 'combined' },
       startTime: '475s', // Start after ramping_attribute_filter_small (445s + 30s + 5s)
     },
@@ -240,7 +264,7 @@ export const options = {
         { duration: '5s', target: 90 },
         { duration: '5s', target: 0 },
       ],
-      exec: 'testFormatComparison',
+      exec: 'testFormatComparisonRamping',
       tags: { scenario: 'ramping_10_50_70_90vus_format_comparison_30s', query_type: 'format' },
       startTime: '505s', // Start after ramping_combined_query (475s + 30s + 5s)
     },
@@ -351,7 +375,7 @@ export const options = {
   },
 };
 
-const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
+const BASE_URL = __ENV.BASE_URL || 'http://localhost:3000';
 const COLLECTION_ID = 'pand';
 
 // Test bounding boxes for different areas in the Netherlands, centered on Rotterdam
@@ -412,10 +436,23 @@ export default function () {
   testBboxQuery100();
 }
 
-// Test function: Bbox query with 10 features
-export function testBboxQuery10() {
+// ============================================================
+// Reusable Helper Functions
+// ============================================================
+
+/**
+ * Generic bbox query test function
+ * @param {string} bbox - Bounding box coordinates
+ * @param {number} limit - Result limit
+ * @param {string} scenario - Scenario name for tagging
+ * @param {number} thresholdMs - Response time threshold in milliseconds
+ * @param {Trend} trendMetric - Trend metric to record duration
+ * @param {number} sleepDuration - Sleep duration after request
+ */
+function executeBboxQuery(bbox, limit, scenario, thresholdMs, trendMetric, sleepDuration) {
   const res = http.get(
-    `${BASE_URL}/collections/${COLLECTION_ID}/items?bbox=${TEST_BBOXES.small}&limit=10`
+    `${BASE_URL}/collections/${COLLECTION_ID}/items?bbox=${bbox}&limit=${limit}`,
+    { tags: { scenario: scenario, query_type: 'bbox' } }
   );
 
   const success = check(res, {
@@ -428,108 +465,29 @@ export function testBboxQuery10() {
         return false;
       }
     },
-    'response time < 500ms': (r) => r.timings.duration < 500,
+    [`response time < ${thresholdMs}ms`]: (r) => r.timings.duration < thresholdMs,
   });
 
   errorRate.add(!success);
   responseTime.add(res.timings.duration);
   bboxQueryTime.add(res.timings.duration);
+  trendMetric.add(res.timings.duration);
 
-  sleep(0.5);
+  sleep(sleepDuration);
 }
 
-// Test function: Bbox query with 100 features
-export function testBboxQuery100() {
+/**
+ * Generic ID lookup test function
+ * @param {string} scenario - Scenario name for tagging
+ * @param {number} thresholdMs - Response time threshold in milliseconds
+ * @param {Trend} trendMetric - Trend metric to record duration (optional)
+ * @param {number} sleepDuration - Sleep duration after request
+ */
+function executeIdLookupQuery(scenario, thresholdMs, trendMetric, sleepDuration) {
+  const featureId = SAMPLE_FEATURE_IDS[Math.floor(Math.random() * SAMPLE_FEATURE_IDS.length)];
   const res = http.get(
-    `${BASE_URL}/collections/${COLLECTION_ID}/items?bbox=${TEST_BBOXES.medium}&limit=100`
-  );
-
-  const success = check(res, {
-    'status is 200': (r) => r.status === 200,
-    'response has data': (r) => {
-      try {
-        const body = JSON.parse(r.body);
-        return body.features && body.features.length > 0;
-      } catch {
-        return false;
-      }
-    },
-    'numberReturned matches': (r) => {
-      try {
-        const body = JSON.parse(r.body);
-        return body.numberReturned && body.numberReturned <= 100;
-      } catch {
-        return false;
-      }
-    },
-    'response time < 1000ms': (r) => r.timings.duration < 1000,
-  });
-
-  errorRate.add(!success);
-  responseTime.add(res.timings.duration);
-  bboxQueryTime.add(res.timings.duration);
-
-  sleep(1);
-}
-
-// Test function: Bbox query with 1000 features
-export function testBboxQuery1000() {
-  const res = http.get(
-    `${BASE_URL}/collections/${COLLECTION_ID}/items?bbox=${TEST_BBOXES.large}&limit=1000`
-  );
-
-  const success = check(res, {
-    'status is 200': (r) => r.status === 200,
-    'response has data': (r) => {
-      try {
-        const body = JSON.parse(r.body);
-        return body.features && body.features.length > 0;
-      } catch {
-        return false;
-      }
-    },
-    'response time < 3000ms': (r) => r.timings.duration < 3000,
-  });
-
-  errorRate.add(!success);
-  responseTime.add(res.timings.duration);
-  bboxQueryTime.add(res.timings.duration);
-
-  sleep(2);
-}
-
-// Test function: Bbox query with 10000 features
-export function testBboxQuery10000() {
-  const res = http.get(
-    `${BASE_URL}/collections/${COLLECTION_ID}/items?bbox=${TEST_BBOXES.xlarge}&limit=10000`
-  );
-
-  const success = check(res, {
-    'status is 200': (r) => r.status === 200,
-    'response has data': (r) => {
-      try {
-        const body = JSON.parse(r.body);
-        return body.features && body.features.length > 0;
-      } catch {
-        return false;
-      }
-    },
-    'response time < 10000ms': (r) => r.timings.duration < 10000,
-  });
-
-  errorRate.add(!success);
-  responseTime.add(res.timings.duration);
-  bboxQueryTime.add(res.timings.duration);
-
-  sleep(3);
-}
-
-// Test function: Feature ID lookup (optimized with attribute index)
-export function testIdLookup() {
-  const featureId =
-    SAMPLE_FEATURE_IDS[Math.floor(Math.random() * SAMPLE_FEATURE_IDS.length)];
-  const res = http.get(
-    `${BASE_URL}/collections/${COLLECTION_ID}/items/${featureId}`
+    `${BASE_URL}/collections/${COLLECTION_ID}/items/${featureId}`,
+    { tags: { scenario: scenario, query_type: 'id' } }
   );
 
   const success = check(res, {
@@ -542,35 +500,38 @@ export function testIdLookup() {
         return false;
       }
     },
-    'response time < 300ms': (r) => r.timings.duration < 300,
+    [`response time < ${thresholdMs}ms`]: (r) => r.timings.duration < thresholdMs,
   });
 
   errorRate.add(!success);
   responseTime.add(res.timings.duration);
   idQueryTime.add(res.timings.duration);
+  if (trendMetric) {
+    trendMetric.add(res.timings.duration);
+  }
 
-  sleep(0.3);
+  sleep(sleepDuration);
 }
 
-// Test function: Attribute filter (small result set)
-export function testAttributeFilterSmall() {
-  // Filter for buildings with specific attribute (e.g., high buildings)
-  const filters = [
-    'b3_h_dak_50p>50',
-    'b3_bouwlagen>5',
-    "status='Pand in gebruik'",
-  ];
-
+/**
+ * Generic attribute filter test function
+ * @param {Array<string>} filters - Array of filter strings to randomly choose from
+ * @param {number} limit - Result limit
+ * @param {string} scenario - Scenario name for tagging
+ * @param {number} thresholdMs - Response time threshold in milliseconds
+ * @param {Trend} trendMetric - Trend metric to record duration (optional)
+ * @param {number} sleepDuration - Sleep duration after request
+ */
+function executeAttributeFilterQuery(filters, limit, scenario, thresholdMs, trendMetric, sleepDuration) {
   const filter = filters[Math.floor(Math.random() * filters.length)];
   const res = http.get(
-    `${BASE_URL}/collections/${COLLECTION_ID}/items?filter=${encodeURIComponent(
-      filter
-    )}&limit=10`
+    `${BASE_URL}/collections/${COLLECTION_ID}/items?filter=${encodeURIComponent(filter)}&limit=${limit}`,
+    { tags: { scenario: scenario, query_type: 'filter' } }
   );
 
   const success = check(res, {
-    'status is 200 or 400': (r) => r.status === 200 || r.status === 400, // Some filters might not be indexed
-    'response time < 1000ms': (r) => r.timings.duration < 1000,
+    'status is 200 or 400': (r) => r.status === 200 || r.status === 400,
+    [`response time < ${thresholdMs}ms`]: (r) => r.timings.duration < thresholdMs,
   });
 
   if (res.status === 200) {
@@ -579,78 +540,181 @@ export function testAttributeFilterSmall() {
 
   errorRate.add(!success);
   responseTime.add(res.timings.duration);
-
-  sleep(0.8);
-}
-
-// Test function: Attribute filter (medium result set)
-export function testAttributeFilterMedium() {
-  // Range queries that might return more results
-  const filters = [
-    'b3_h_dak_50p>50',
-    'b3_bouwlagen>5',
-    "status='Pand in gebruik'",
-  ];
-
-  const filter = filters[Math.floor(Math.random() * filters.length)];
-  const res = http.get(
-    `${BASE_URL}/collections/${COLLECTION_ID}/items?filter=${encodeURIComponent(
-      filter
-    )}&limit=100`
-  );
-
-  const success = check(res, {
-    'status is 200 or 400': (r) => r.status === 200 || r.status === 400,
-    'response time < 2000ms': (r) => r.timings.duration < 2000,
-  });
-
-  if (res.status === 200) {
-    filterQueryTime.add(res.timings.duration);
+  if (trendMetric && res.status === 200) {
+    trendMetric.add(res.timings.duration);
   }
 
-  errorRate.add(!success);
-  responseTime.add(res.timings.duration);
-
-  sleep(1.5);
+  sleep(sleepDuration);
 }
 
-// Test function: Combined bbox + filter query
-export function testCombinedQuery() {
+/**
+ * Generic combined query test function (bbox + attribute filter)
+ * @param {string} bbox - Bounding box coordinates
+ * @param {string} filter - Filter query string
+ * @param {number} limit - Result limit
+ * @param {string} scenario - Scenario name for tagging
+ * @param {number} thresholdMs - Response time threshold in milliseconds
+ * @param {Trend} trendMetric - Trend metric to record duration (optional)
+ * @param {number} sleepDuration - Sleep duration after request
+ */
+function executeCombinedQuery(bbox, filter, limit, scenario, thresholdMs, trendMetric, sleepDuration) {
   const res = http.get(
-    `${BASE_URL}/collections/${COLLECTION_ID}/items?bbox=${TEST_BBOXES.medium
-    }&filter=${encodeURIComponent('b3_bouwlagen>2')}&limit=50`
+    `${BASE_URL}/collections/${COLLECTION_ID}/items?bbox=${bbox}&filter=${encodeURIComponent(filter)}&limit=${limit}`,
+    { tags: { scenario: scenario, query_type: 'combined' } }
   );
 
   const success = check(res, {
     'status is 200 or 400': (r) => r.status === 200 || r.status === 400,
-    'response time < 2000ms': (r) => r.timings.duration < 2000,
+    [`response time < ${thresholdMs}ms`]: (r) => r.timings.duration < thresholdMs,
   });
 
   errorRate.add(!success);
   responseTime.add(res.timings.duration);
+  if (trendMetric && res.status === 200) {
+    trendMetric.add(res.timings.duration);
+  }
 
-  sleep(1.5);
+  sleep(sleepDuration);
 }
 
-// Test function: Different output formats
-export function testFormatComparison() {
-  const formats = ['json', 'cityjson', 'cjseq', 'obj'];
+/**
+ * Format comparison test function
+ * @param {Array<string>} formats - Array of format strings to randomly choose from
+ * @param {string} bbox - Bounding box coordinates
+ * @param {number} limit - Result limit
+ * @param {string} scenario - Scenario name for tagging
+ * @param {number} thresholdMs - Response time threshold in milliseconds
+ * @param {Trend} trendMetric - Trend metric to record duration (optional)
+ * @param {number} sleepDuration - Sleep duration after request
+ */
+function executeFormatComparisonQuery(formats, bbox, limit, scenario, thresholdMs, trendMetric, sleepDuration) {
   const format = formats[Math.floor(Math.random() * formats.length)];
-
   const res = http.get(
-    `${BASE_URL}/collections/${COLLECTION_ID}/items?bbox=${TEST_BBOXES.small}&limit=10&f=${format}`
+    `${BASE_URL}/collections/${COLLECTION_ID}/items?bbox=${bbox}&limit=${limit}&f=${format}`,
+    { tags: { scenario: scenario, query_type: 'format', format: format } }
   );
 
   const success = check(res, {
     'status is 200': (r) => r.status === 200,
     'has content': (r) => r.body && r.body.length > 0,
-    'response time < 3000ms': (r) => r.timings.duration < 3000,
+    [`response time < ${thresholdMs}ms`]: (r) => r.timings.duration < thresholdMs,
   });
 
   errorRate.add(!success);
   responseTime.add(res.timings.duration);
+  if (trendMetric) {
+    trendMetric.add(res.timings.duration);
+  }
 
-  sleep(1);
+  sleep(sleepDuration);
+}
+
+// ============================================================
+// Exported Test Functions (used by scenarios)
+// ============================================================
+
+// ============================================================
+// CONSTANT LOAD Test Functions
+// ============================================================
+
+// Test function: Bbox query with 10 features (constant load)
+export function testBboxQuery10() {
+  executeBboxQuery(TEST_BBOXES.small, 10, 'constant_10vus_bbox_10features_30s', 500, constantBbox10Time, 0.5);
+}
+
+// Test function: Bbox query with 100 features (constant load)
+export function testBboxQuery100() {
+  executeBboxQuery(TEST_BBOXES.medium, 100, 'constant_10vus_bbox_100features_30s', 1000, constantBbox100Time, 1);
+}
+
+// Test function: Bbox query with 1000 features (constant load)
+export function testBboxQuery1000() {
+  executeBboxQuery(TEST_BBOXES.large, 1000, 'constant_10vus_bbox_1000features_30s', 3000, constantBbox1000Time, 2);
+}
+
+// Test function: Bbox query with 10000 features (constant load)
+export function testBboxQuery10000() {
+  executeBboxQuery(TEST_BBOXES.xlarge, 10000, 'constant_10vus_bbox_10000features_30s', 10000, constantBbox10000Time, 3);
+}
+
+// Test function: Feature ID lookup (constant load)
+export function testIdLookup() {
+  executeIdLookupQuery('constant_10vus_id_lookup_30s', 300, constantIdLookupTime, 0.3);
+}
+
+// Test function: Attribute filter small (constant load)
+export function testAttributeFilterSmall() {
+  const filters = ['b3_h_dak_50p>50', 'b3_bouwlagen>5', "status='Pand in gebruik'"];
+  executeAttributeFilterQuery(filters, 10, 'constant_10vus_attribute_filter_small_30s', 1000, constantAttributeFilterSmallTime, 0.8);
+}
+
+// Test function: Attribute filter medium (constant load)
+export function testAttributeFilterMedium() {
+  const filters = ['b3_h_dak_50p>50', 'b3_bouwlagen>5', "status='Pand in gebruik'"];
+  executeAttributeFilterQuery(filters, 100, 'constant_10vus_attribute_filter_medium_30s', 2000, constantAttributeFilterMediumTime, 1.5);
+}
+
+// Test function: Combined query (constant load)
+export function testCombinedQuery() {
+  executeCombinedQuery(TEST_BBOXES.medium, 'b3_bouwlagen>2', 50, 'constant_10vus_combined_query_30s', 2000, constantCombinedQueryTime, 1.5);
+}
+
+// Test function: Format comparison (constant load)
+export function testFormatComparison() {
+  const formats = ['json', 'cityjson', 'cjseq', 'obj'];
+  executeFormatComparisonQuery(formats, TEST_BBOXES.small, 10, 'constant_10vus_format_comparison_30s', 3000, constantFormatComparisonTime, 1);
+}
+
+// ============================================================
+// RAMPING LOAD Test Functions
+// ============================================================
+
+// Test function: Bbox query with 10 features (ramping load)
+export function testBboxQuery10Ramping() {
+  executeBboxQuery(TEST_BBOXES.small, 10, 'ramping_10_50_70_90vus_bbox_10features_30s', 500, rampingBbox10Time, 0.5);
+}
+
+// Test function: Bbox query with 100 features (ramping load)
+export function testBboxQuery100Ramping() {
+  executeBboxQuery(TEST_BBOXES.medium, 100, 'ramping_10_50_70_90vus_bbox_100features_30s', 1000, rampingBbox100Time, 1);
+}
+
+// Test function: Bbox query with 1000 features (ramping load)
+export function testBboxQuery1000Ramping() {
+  executeBboxQuery(TEST_BBOXES.large, 1000, 'ramping_10_30_50_70_90vus_bbox_1000features_30s', 3000, rampingBbox1000Time, 2);
+}
+
+// Test function: Bbox query with 10000 features (ramping load)
+export function testBboxQuery10000Ramping() {
+  executeBboxQuery(TEST_BBOXES.xlarge, 10000, 'ramping_10_50_70_90vus_bbox_10000features_30s', 10000, rampingBbox10000Time, 3);
+}
+
+// Test function: Feature ID lookup (ramping load)
+export function testIdLookupRamping() {
+  executeIdLookupQuery('ramping_10_20_30_40_50_60vus_id_lookup_30s', 300, rampingIdLookupTime, 0.3);
+}
+
+// Test function: Attribute filter small (ramping load)
+export function testAttributeFilterSmallRamping() {
+  const filters = ['b3_h_dak_50p>50', 'b3_bouwlagen>5', "status='Pand in gebruik'"];
+  executeAttributeFilterQuery(filters, 10, 'ramping_10_50_70_90vus_attribute_filter_small_30s', 1000, rampingAttributeFilterSmallTime, 0.8);
+}
+
+// Test function: Attribute filter medium (ramping load)
+export function testAttributeFilterMediumRamping() {
+  const filters = ['b3_h_dak_50p>50', 'b3_bouwlagen>5', "status='Pand in gebruik'"];
+  executeAttributeFilterQuery(filters, 100, 'ramping_10_50_70_90vus_attribute_filter_medium_30s', 2000, rampingAttributeFilterMediumTime, 1.5);
+}
+
+// Test function: Combined query (ramping load)
+export function testCombinedQueryRamping() {
+  executeCombinedQuery(TEST_BBOXES.medium, 'b3_bouwlagen>2', 50, 'ramping_10_50_70_90vus_combined_query_30s', 2000, rampingCombinedQueryTime, 1.5);
+}
+
+// Test function: Format comparison (ramping load)
+export function testFormatComparisonRamping() {
+  const formats = ['json', 'cityjson', 'cjseq', 'obj'];
+  executeFormatComparisonQuery(formats, TEST_BBOXES.small, 10, 'ramping_10_50_70_90vus_format_comparison_30s', 3000, rampingFormatComparisonTime, 1);
 }
 
 
@@ -663,7 +727,8 @@ export function testCrsTransformation() {
   const wgs84Bbox = '4.462456,51.926517,4.462456,51.926517';
 
   const res = http.get(
-    `${BASE_URL}/collections/${COLLECTION_ID}/items?bbox=${wgs84Bbox}&bbox-crs=EPSG:4326&limit=100`
+    `${BASE_URL}/collections/${COLLECTION_ID}/items?bbox=${wgs84Bbox}&bbox-crs=EPSG:4326&limit=100`,
+    { tags: { scenario: 'crs_transformation', query_type: 'crs' } }
   );
 
   const success = check(res, {
@@ -714,12 +779,36 @@ export function teardown(data) {
 // HTML Summary Handler using k6-reporter
 // See: https://github.com/benc-uk/k6-reporter
 export function handleSummary(data) {
+  // Create a custom summary with per-scenario metrics
+  const customSummary = {
+    timestamp: new Date().toISOString(),
+    overall: data.metrics,
+    scenarios: {}
+  };
+
+  // Extract metrics by scenario tag
+  for (const [metricName, metricData] of Object.entries(data.metrics)) {
+    // Look for metrics with scenario tags in the thresholds or sub-metrics
+    if (metricData.values) {
+      // Check if this metric has scenario-specific data
+      const scenarioMatch = metricName.match(/\{scenario:([^}]+)\}/);
+      if (scenarioMatch) {
+        const scenarioName = scenarioMatch[1];
+        if (!customSummary.scenarios[scenarioName]) {
+          customSummary.scenarios[scenarioName] = {};
+        }
+        customSummary.scenarios[scenarioName][metricName] = metricData;
+      }
+    }
+  }
+
   return {
     'results/summary.html': htmlReport(data, {
       title: 'FlatCityBuf API Benchmark Results',
       theme: 'default'
     }),
     'results/summary.json': JSON.stringify(data),
+    'results/summary-by-scenario.json': JSON.stringify(customSummary, null, 2),
     stdout: textSummary(data, { indent: ' ', enableColors: true }),
   };
 }
