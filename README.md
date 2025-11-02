@@ -168,18 +168,9 @@ k6 run --vus 10 --duration 30s fcb-benchmark.js
 
 **Adding scenarios:** Create test function, add to `options.scenarios`, set `startTime` with 5s buffer from previous scenario.
 
-## 🤝 Contributing
-
-Contributions welcome! To add scenarios or improve documentation:
-
-1. Fork the repository
-2. Make your changes
-3. Test thoroughly
-4. Submit a pull request
-
 ## 📄 License
 
-Same as FlatCityBuf project.
+Same as FlatCityBuf project. MIT License(./LICENSE).
 
 ## 🔗 Resources
 
