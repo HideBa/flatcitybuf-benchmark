@@ -138,7 +138,8 @@ The benchmark suite includes **16 scenarios** organized into **6 test groups**, 
 - **Start Time:** 350s
 - **VUs:** 10 constant
 - **Duration:** 30s
-- **Filters:** `b3_h_dak_50p>50`, `b3_bouwlagen>5`, `status='Pand in gebruik'`
+- **Filter:** `b3_h_dak_50p>50` (buildings taller than 50m)
+- **Note:** Other filter examples available in code but this test uses height filter only
 
 #### Scenario 12: Constant Combined Query (BBox + Filter)
 
@@ -176,7 +177,7 @@ Tests standard OGC API endpoints and query parameters:
 
 Uses actual Dutch building data (BAG dataset):
 
-- Rotterdam bounding boxes: `84000,445000,85000,446000` (EPSG:7415)
+- Rotterdam bounding boxes centered on `91400,438000` (EPSG:7415) - see Test Data Details section below
 - Real feature IDs: `NL.IMBAG.Pand.0153100000209948`
 - Realistic attribute filters: `b3_h_dak_50p>50`, `b3_bouwlagen>5`
 
@@ -319,13 +320,13 @@ If you prefer to run k6 directly:
 
 ```bash
 # Run all scenarios
-BASE_URL=http://localhost:8080 k6 run fcb-benchmark.js
+BASE_URL=http://localhost:3000 k6 run fcb-benchmark.js
 
 # Custom VUs and duration
-BASE_URL=http://localhost:8080 k6 run --vus 10 --duration 30s fcb-benchmark.js
+BASE_URL=http://localhost:3000 k6 run --vus 10 --duration 30s fcb-benchmark.js
 
 # Output to JSON
-BASE_URL=http://localhost:8080 k6 run --out json=results.json fcb-benchmark.js
+BASE_URL=http://localhost:3000 k6 run --out json=results.json fcb-benchmark.js
 
 # Docker execution
 docker run -it --rm -v $(pwd):/app -w /app docker.io/grafana/k6 run --out json=results.json fcb-benchmark.js
@@ -488,7 +489,7 @@ brew install k6  # macOS
 
 ```bash
 # Verify API is running
-curl http://localhost:8080/collections/pand
+curl http://localhost:3000/collections/pand
 ```
 
 **High error rates**
@@ -581,7 +582,7 @@ Ramping tests (0→90 VUs) test scalability and identify breaking points. Perfor
 
 **Environment Variables:**
 
-- `BASE_URL`: API base URL (default: `http://localhost:8080`)
+- `BASE_URL`: API base URL (default: `http://localhost:3000` in code, `http://localhost:3000` in scripts)
 - `COLLECTION_ID`: Collection to query (default: `pand`)
 
 ### Running Specific Scenarios
@@ -629,7 +630,7 @@ thresholds: {
 }
 ```
 
-Note: Per-scenario thresholds are currently commented out in the default configuration. Uncomment and customize as needed.
+Note: Per-scenario thresholds are active in the default configuration and provide detailed performance expectations for each test scenario.
 
 ### Modifying Scenarios
 
