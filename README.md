@@ -310,7 +310,7 @@ BASE_URL=https://your-api-url.com ./run-fcb-benchmark.sh
 ### Combined Options
 
 ```bash
-./run-fcb-benchmark.sh -u https://api.example.com -m full -o html
+./run-fcb-benchmark-docker.sh -u http://127.0.0.1:3000 -m full -o all
 ```
 
 ### Manual k6 Execution
