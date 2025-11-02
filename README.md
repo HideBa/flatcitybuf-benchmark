@@ -198,23 +198,6 @@ Tracks detailed performance data:
 - Custom metrics (bbox_query_time, id_query_time, filter_query_time)
 - Response validation (checks pass rate)
 
-## 📖 Documentation
-
-### Essential Reading
-
-- **[SUMMARY.md](SUMMARY.md)** - What was created and why
-- **[TESTING_GUIDE.md](TESTING_GUIDE.md)** - Best practices, optimization, troubleshooting
-
-### Advanced Topics
-
-- **[BENCHMARK_COMPARISON.md](BENCHMARK_COMPARISON.md)** - vs original generic benchmark
-- **[INDEX.md](INDEX.md)** - Complete documentation index
-
-### Configuration & Examples
-
-- **[fcb-benchmark.config.example.js](fcb-benchmark.config.example.js)** - Configuration template
-- **[.github/workflows/benchmark.yml.example](.github/workflows/benchmark.yml.example)** - CI/CD integration
-
 ## 🛠️ Installation
 
 ### Prerequisites
@@ -404,15 +387,13 @@ id_query_time..................: avg=128ms  p(95)=245ms
 - **p(95)**: 95% of requests faster than this value
 - **p(99)**: 99% of requests faster than this value
 
-See [TESTING_GUIDE.md](TESTING_GUIDE.md#understanding-results) for detailed analysis.
-
 ## 🎓 Examples
 
 ### Example 1: Baseline Test
 
 ```bash
 # Run baseline test
-./run-fcb-benchmark.sh -m full -o json
+./run-fcb-benchmark-docker.sh -m full -o json
 
 # Save baseline
 cp results/fcb_benchmark_*.json baseline.json
@@ -422,13 +403,13 @@ cp results/fcb_benchmark_*.json baseline.json
 
 ```bash
 # Before optimization
-./run-fcb-benchmark.sh -m full -o json
+./run-fcb-benchmark-docker.sh -m full -o json
 # Note p(95) values
 
 # Make optimizations...
 
 # After optimization
-./run-fcb-benchmark.sh -m full -o json
+./run-fcb-benchmark-docker.sh -m full -o json
 # Compare p(95) values
 ```
 
@@ -436,10 +417,10 @@ cp results/fcb_benchmark_*.json baseline.json
 
 ```bash
 # Test staging
-./run-fcb-benchmark.sh -u https://staging.api.com -m quick
+./run-fcb-benchmark-docker.sh -u https://staging.api.com -m quick
 
 # Test production
-./run-fcb-benchmark.sh -u https://prod.api.com -m quick
+./run-fcb-benchmark-docker.sh -u https://prod.api.com -m quick
 
 # Compare results
 ```
@@ -451,8 +432,6 @@ cp results/fcb_benchmark_*.json baseline.json
 - name: Run Benchmark
   run: ./run-fcb-benchmark.sh -u ${{ secrets.API_URL }} -m full -o json
 ```
-
-See [.github/workflows/benchmark.yml.example](.github/workflows/benchmark.yml.example) for complete example.
 
 ## 🔧 Customization
 
@@ -531,8 +510,6 @@ top  # or htop
 # Test with smaller dataset
 # Edit fcb-benchmark.js, reduce limits
 ```
-
-See [TESTING_GUIDE.md](TESTING_GUIDE.md#troubleshooting) for detailed troubleshooting.
 
 ## 🔍 Performance Expectations
 
@@ -714,8 +691,6 @@ The original `benchmark.js` provides generic API load testing. This FlatCityBuf 
 - **Real geographic data**
 - **Index performance** (R-tree, B+Tree)
 
-See [BENCHMARK_COMPARISON.md](BENCHMARK_COMPARISON.md) for detailed comparison.
-
 ## 🤝 Contributing
 
 Contributions welcome! To add scenarios or improve documentation:
@@ -732,20 +707,8 @@ Same as FlatCityBuf project.
 ## 🔗 Resources
 
 - **k6 Documentation**: <https://k6.io/docs/>
-- **FlatCityBuf API**: flatcitybuf/src/rust/fcb_api/README.md
+- **FlatCityBuf API**: github.com/cityjson/flatcitybuf/src/rust/fcb_api/README.md
 - **OGC API - Features**: <https://ogcapi.ogc.org/features/>
 - **CityJSON**: <https://www.cityjson.org/>
 
-## 📞 Support
-
-- **Documentation**: See [INDEX.md](INDEX.md) for complete doc index
-- **Issues**: Create GitHub issue
-- **Questions**: Review docs first, then ask
-
 ---
-
-**Quick Links:**
-[Summary](SUMMARY.md) |
-[Testing Guide](TESTING_GUIDE.md) |
-[Benchmark Comparison](BENCHMARK_COMPARISON.md) |
-[Doc Index](INDEX.md)
