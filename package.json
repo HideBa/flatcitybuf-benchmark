@@ -17,7 +17,7 @@
     "api-testing"
   ],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "dependencies": {
     "express": "^5.1.0",
     "k6": "^0.0.0",
