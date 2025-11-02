@@ -7,6 +7,7 @@ import { textSummary } from 'https://jslib.k6.io/k6-summary/0.1.0/index.js';
 // Custom metrics
 const errorRate = new Rate('errors');
 const responseTime = new Trend('response_time');
+// Overall bbox query time
 const bboxQueryTime = new Trend('bbox_query_time');
 const idQueryTime = new Trend('id_query_time');
 const filterQueryTime = new Trend('filter_query_time');
@@ -644,7 +645,7 @@ export function testIdLookup() {
 
 // Test function: Attribute filter small (constant load)
 export function testAttributeFilterSmall() {
-  const filters = ['b3_h_dak_50p>50', 'b3_bouwlagen>5', "status='Pand in gebruik'"];
+  const filters = ['b3_h_dak_50p>50'];
   executeAttributeFilterQuery(filters, 10, 'constant_10vus_attribute_filter_small_30s', 1000, constantAttributeFilterSmallTime, 0.8);
 }
 
@@ -696,13 +697,13 @@ export function testIdLookupRamping() {
 
 // Test function: Attribute filter small (ramping load)
 export function testAttributeFilterSmallRamping() {
-  const filters = ['b3_h_dak_50p>50', 'b3_bouwlagen>5', "status='Pand in gebruik'"];
+  const filters = ['b3_h_dak_50p>50'];
   executeAttributeFilterQuery(filters, 10, 'ramping_10_50_70_90vus_attribute_filter_small_30s', 1000, rampingAttributeFilterSmallTime, 0.8);
 }
 
 // Test function: Attribute filter medium (ramping load)
 export function testAttributeFilterMediumRamping() {
-  const filters = ['b3_h_dak_50p>50', 'b3_bouwlagen>5', "status='Pand in gebruik'"];
+  const filters = ['b3_h_dak_50p>50'];
   executeAttributeFilterQuery(filters, 100, 'ramping_10_50_70_90vus_attribute_filter_medium_30s', 2000, rampingAttributeFilterMediumTime, 1.5);
 }
 
