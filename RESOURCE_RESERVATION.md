@@ -340,6 +340,7 @@ cat /proc/cmdline
 ## References
 
 - [Linux cgroups documentation](https://www.kernel.org/doc/Documentation/cgroup-v2.txt)
-- [CPU isolation guide](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux_for_real_time/8/html/optimizing_rhel_8_for_real_time_for_low_latency_operation/assembly_isolating-cpus-using-tuned_optimizing-rhel8-for-real-time-for-low-latency-operation)
+- [CPU isolation guide]([https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux_for_real_time/8/html/optimizing_rhel_8_for_real_time_for_low_latency_operation/assembly_isolating-cpus-using-tuned_optimizing-rhel8-for-real-time-for-low-latency-operation](https://documentation.ubuntu.com/real-time/latest/how-to/isolate-workload-cpusets/))
+
 - [taskset man page](https://man7.org/linux/man-pages/man1/taskset.1.html)
 - [systemd resource control](https://www.freedesktop.org/software/systemd/man/systemd.resource-control.html)
